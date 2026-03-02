@@ -7,6 +7,10 @@ import 'dotenv/config';
 import { Bot, GrammyError, HttpError } from 'grammy';
 import { handleStart } from './handlers/start.js';
 import { handleHelp } from './handlers/help.js';
+import { handleDone } from './handlers/done.js';
+import { handleStatus } from './handlers/status.js';
+import { handlePhoto, handleManualPlateInput } from './handlers/photo.js';
+import { recoverOpenSessions } from './session.js';
 
 // =============================================
 // Bot Token Kontrolü
@@ -59,36 +63,35 @@ bot.use(async (ctx, next) => {
 bot.command('start', handleStart);
 bot.command('yardim', handleHelp);
 bot.command('help', handleHelp); // İngilizce alias
+bot.command('done', handleDone);
+bot.command('bitti', handleDone); // Türkçe alias
+bot.command('durum', handleStatus);
+bot.command('status', handleStatus); // İngilizce alias
 
 // =============================================
-// Geçici: Fotoğraf mesajı handler (Phase 3-4'te geliştirilecek)
+// Fotoğraf Handler — OCR + Session akışı
 // =============================================
-bot.on('message:photo', async (ctx) => {
-    await ctx.reply(
-        '📸 Fotoğrafını aldım! Ancak fotoğraf işleme henüz aktif değil.\n\n' +
-        '🔜 Bu özellik Phase 3-4\'te eklenecek.\n' +
-        'Şimdilik /yardim yazarak komutları görebilirsin.'
-    );
-});
+bot.on('message:photo', handlePhoto);
 
 // =============================================
-// Bilinmeyen mesajlar
+// Metin Mesajları (Manuel plaka girişi + bilinmeyen)
 // =============================================
 bot.on('message:text', async (ctx) => {
-    // Komut olmayan metin mesajları
-    if (!ctx.message.text.startsWith('/')) {
-        await ctx.reply(
-            '🤔 Anlamadım. Komutlar için /yardim yaz.\n\n' +
-            '📸 Fotoğraf göndererek başlayabilirsin!'
-        );
-    }
-});
-
-// Bilinmeyen komutlar
-bot.on('message', async (ctx) => {
-    if (ctx.message?.text?.startsWith('/')) {
+    // Komutları atla (zaten yukarıda handle ediliyor)
+    if (ctx.message.text.startsWith('/')) {
         await ctx.reply('❓ Bilinmeyen komut. /yardim yazarak komut listesini görebilirsin.');
+        return;
     }
+
+    // Manuel plaka girişi bekliyor muyuz?
+    const handled = await handleManualPlateInput(ctx);
+    if (handled) return;
+
+    // Bilinmeyen metin
+    await ctx.reply(
+        '🤔 Anlamadım. Komutlar için /yardim yaz.\n\n' +
+        '📸 Fotoğraf göndererek başlayabilirsin!'
+    );
 });
 
 // =============================================
@@ -127,6 +130,18 @@ async function startBot() {
         console.log('║  📡 Mod: Long Polling                            ║');
         console.log('╚══════════════════════════════════════════════════╝');
         console.log();
+
+        // Açık session'ları yükle (restart recovery)
+        await recoverOpenSessions((telegramId, session) => {
+            bot.api.sendMessage(
+                telegramId,
+                `⏰ *Oturum otomatik kapandı*\n\n` +
+                `🚛 Plaka: \`${session.plateNumber}\`\n` +
+                `📸 Fotoğraf: ${session.photoCount} adet`,
+                { parse_mode: 'Markdown' }
+            ).catch(() => { });
+        });
+
         console.log('⏳ Mesaj bekleniyor... (Ctrl+C ile durdur)');
         console.log();
 

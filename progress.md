@@ -95,18 +95,19 @@ git add . && git commit -m "feat(bot): add multi-country OCR plate recognition"
 
 ---
 
-## Phase 4 — Session Yönetimi
+## Phase 4 — Session Yönetimi ✅
 > 🎯 Hedef: Peş peşe atılan fotoğrafları aynı araca gruplama
 
-- [ ] `src/session.js` — `SessionState` class
-- [ ] In-memory session map (`activeSessions`)
-- [ ] 5 dakika timeout mekanizması
-- [ ] Session açma (OCR başarılı → yeni session)
-- [ ] Session'a fotoğraf ekleme (açık session varsa)
-- [ ] `/done` komutu — erken session kapatma
-- [ ] `/durum` komutu — aktif session bilgisi
-- [ ] Manuel plaka girişi (OCR başarısız olduğunda)
-- [ ] Bot restart recovery (DB'deki açık session'ları yükle)
+- [x] `src/session.js` — Session yönetim modülü
+- [x] In-memory session map (`activeSessions`)
+- [x] 5 dakika timeout mekanizması (otomatik kapanma + bildirim)
+- [x] Session açma (OCR başarılı → yeni session)
+- [x] Session'a fotoğraf ekleme (açık session varsa)
+- [x] `/done` + `/bitti` komutu — erken session kapatma
+- [x] `/durum` + `/status` komutu — aktif session bilgisi
+- [x] Manuel plaka girişi (OCR başarısız olduğunda)
+- [x] Bot restart recovery (DB'deki açık session'ları yükle)
+- [x] `src/handlers/photo.js` — OCR + session akışı handler
 
 **Git Checkpoint:**
 ```bash
