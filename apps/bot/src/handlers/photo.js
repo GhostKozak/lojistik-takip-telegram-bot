@@ -115,52 +115,28 @@ async function processNewPlatePhoto(ctx, fileId, user) {
             await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
         } catch { /* ignore */ }
 
+        // Fotoğrafı pending'e kaydet (session açılınca eklenecek)
+        pendingManualInput.set(ctx.from.id, {
+            fileId,
+            timestamp: Date.now(),
+            ocrResult: result,
+        });
+
         if (result.plate) {
-            // ---- OCR Başarılı — Session aç ----
-            const session = await openSession({
-                telegramId: ctx.from.id,
-                userId: user.id,
-                plateNumber: result.plate,
-                plateRaw: result.raw,
-                confidence: result.confidence,
-                onTimeout: createTimeoutCallback(ctx),
-            });
-
-            // İlk fotoğrafı da kaydet
-            await addPhoto({
-                sessionId: session.sessionId,
-                storagePath: `pending/${fileId}`,
-                publicUrl: `pending/${fileId}`,
-                photoType: 'plate',
-                telegramFileId: fileId,
-                ocrText: result.raw,
-            });
-            incrementPhotoCount(ctx.from.id);
-
-            const candidatesText = result.candidates.length > 1
-                ? `\n🔤 Diğer adaylar: ${result.candidates.slice(1).join(', ')}`
-                : '';
-
+            // ---- OCR bir şey buldu — kullanıcıya doğrulama sor ----
             await ctx.reply(
-                `✅ *Plaka tanındı!*\n\n` +
-                `🚛 Plaka: \`${result.plate}\`\n` +
-                `📊 Güven: ${Math.round(result.confidence * 100)}%${candidatesText}\n\n` +
-                `📸 Şimdi konteyner ve mühür fotoğraflarını gönderebilirsin.\n` +
-                `⏰ ${getTimeoutDuration()} içinde otomatik kapanır veya /done ile bitir.`,
+                `🔍 *OCR Tahmini:* \`${result.plate}\`\n` +
+                `📊 Güven: ${Math.round(result.confidence * 100)}%\n\n` +
+                `✅ Doğruysa plakayı aynen yaz: \`${result.plate}\`\n` +
+                `✏️ Yanlışsa doğru plakayı yaz (örn: \`34 ABC 1234\`)`,
                 { parse_mode: 'Markdown' }
             );
         } else {
-            // ---- OCR Başarısız — Manuel giriş iste ----
-            pendingManualInput.set(ctx.from.id, {
-                fileId,
-                timestamp: Date.now(),
-            });
-
+            // ---- OCR başarısız — manuel giriş iste ----
             await ctx.reply(
                 `⚠️ *Plaka okunamadı*\n\n` +
-                `📊 OCR güven: ${Math.round(result.confidence * 100)}%\n` +
-                `${result.raw ? `🔤 Okunan metin: "${result.raw}"` : ''}\n\n` +
-                `✏️ Lütfen plaka numarasını *elle yaz* (örn: \`34 ABC 1234\`)`,
+                `✏️ Lütfen plaka numarasını *elle yaz*\n` +
+                `Örnek: \`CB 4644 EB\` veya \`34 ABC 1234\``,
                 { parse_mode: 'Markdown' }
             );
         }

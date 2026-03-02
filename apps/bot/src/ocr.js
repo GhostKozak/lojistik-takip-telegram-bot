@@ -43,35 +43,126 @@
  * 
  * + Genel alfanumerik fallback
  */
+import { spawn } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-import Tesseract from 'tesseract.js';
-
-const CONFIDENCE_THRESHOLD = parseFloat(process.env.OCR_CONFIDENCE_THRESHOLD || '0.15');
-
-// Tesseract worker (singleton, lazy-init)
-let worker = null;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const OCR_SCRIPT = path.join(__dirname, '..', 'scripts', 'ocr_reader.py');
 
 /**
- * Tesseract worker'ı başlat (lazy initialization)
- * @returns {Promise<Tesseract.Worker>}
+ * EasyOCR ile fotoğraftan metin oku
+ * Python script'i child_process ile çağırır
+ * @param {Buffer} imageBuffer
+ * @returns {Promise<object>} {candidates, all_texts, total_detections}
  */
-async function getWorker() {
-    if (!worker) {
-        console.log('[OCR] Tesseract worker başlatılıyor...');
-        worker = await Tesseract.createWorker('eng', Tesseract.OEM.LSTM_ONLY, {
-            // Logger kapalı (production'da gereksiz)
+function runEasyOcr(imageBuffer) {
+    return new Promise((resolve, reject) => {
+        const proc = spawn('python', [OCR_SCRIPT], {
+            stdio: ['pipe', 'pipe', 'pipe'],
         });
 
-        // AUTO mode — Tesseract kendi analiz etsin
-        // Whitelist yok — serbestçe okusun, sonra biz filtreleyeceğiz
-        await worker.setParameters({
-            tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+        let stdout = '';
+        let stderr = '';
+
+        proc.stdout.on('data', (data) => { stdout += data.toString(); });
+        proc.stderr.on('data', (data) => { stderr += data.toString(); });
+
+        proc.on('close', (code) => {
+            if (code !== 0) {
+                reject(new Error(`EasyOCR process exited with code ${code}: ${stderr}`));
+                return;
+            }
+
+            try {
+                const result = JSON.parse(stdout.trim());
+                if (result.error) {
+                    reject(new Error(result.error));
+                } else {
+                    resolve(result);
+                }
+            } catch (e) {
+                reject(new Error(`JSON parse hatası: ${e.message}, stdout: ${stdout.slice(0, 200)}`));
+            }
         });
 
-        console.log('[OCR] ✅ Worker hazır');
-    }
-    return worker;
+        proc.on('error', (err) => {
+            reject(new Error(`EasyOCR başlatılamadı: ${err.message}`));
+        });
+
+        // Görüntüyü stdin'e gönder
+        proc.stdin.write(imageBuffer);
+        proc.stdin.end();
+    });
 }
+
+/**
+ * Fotoğraftan plaka numarası tanı (EasyOCR)
+ * @param {Buffer} imageBuffer - Fotoğraf buffer'ı
+ * @returns {Promise<{plate: string|null, raw: string, confidence: number, candidates: string[]}>}
+ */
+export async function recognizePlate(imageBuffer) {
+    console.log('[OCR] 🔍 EasyOCR ile plaka tanıma başlatılıyor...');
+    const startTime = Date.now();
+
+    try {
+        const result = await runEasyOcr(imageBuffer);
+        const duration = Date.now() - startTime;
+
+        console.log(`[OCR] EasyOCR: ${result.total_detections} metin tespit edildi (${duration}ms)`);
+
+        // Tüm okunan metinleri logla
+        if (result.all_texts?.length > 0) {
+            for (const t of result.all_texts) {
+                console.log(`[OCR]   → "${t.text}" (güven: ${(t.confidence * 100).toFixed(0)}%)`);
+            }
+        }
+
+        // Plaka adayları
+        if (result.candidates?.length > 0) {
+            const best = result.candidates[0];
+            const normalizedPlate = normalizePlate(best.text);
+
+            console.log(`[OCR] ✅ Plaka bulundu: "${normalizedPlate}" (güven: ${(best.confidence * 100).toFixed(0)}%, oran: ${best.aspect_ratio.toFixed(1)})`);
+
+            return {
+                plate: normalizedPlate,
+                raw: best.text,
+                confidence: best.confidence,
+                candidates: result.candidates.map(c => normalizePlate(c.text)),
+            };
+        }
+
+        // Aday bulunamadı
+        const rawText = result.all_texts?.[0]?.text || '';
+        console.log(`[OCR] ❌ Plaka adayı bulunamadı (${duration}ms)`);
+
+        return {
+            plate: null,
+            raw: rawText,
+            confidence: 0,
+            candidates: [],
+        };
+    } catch (err) {
+        const duration = Date.now() - startTime;
+        console.error(`[OCR] ❌ EasyOCR hatası (${duration}ms):`, err.message);
+
+        return {
+            plate: null,
+            raw: '',
+            confidence: 0,
+            candidates: [],
+        };
+    }
+}
+
+/**
+ * OCR cleanup (EasyOCR'da stateless — bir şey yapılmıyor)
+ */
+export async function terminateWorker() {
+    console.log('[OCR] EasyOCR cleanup (stateless)');
+}
+
 
 /**
  * OCR ham çıktısını temizle ve normalize et
@@ -118,11 +209,18 @@ function extractPlateCandidates(text) {
     const candidates = [];
 
     /**
-     * Aday ekle (tekrar kontrolü ile)
+     * Aday ekle (tekrar kontrolü + doğrulama ile)
+     * Her plaka en az 1 harf ve 1 rakam içermelidir
      */
     function addCandidate(c) {
         const trimmed = c.trim();
-        if (trimmed.length >= 4 && !candidates.includes(trimmed)) {
+        const cleaned = trimmed.replace(/\s/g, '');
+        if (
+            cleaned.length >= 4 &&
+            /[A-Z]/.test(cleaned) &&   // En az 1 harf
+            /\d/.test(cleaned) &&       // En az 1 rakam
+            !candidates.includes(trimmed)
+        ) {
             candidates.push(trimmed);
         }
     }
@@ -362,90 +460,4 @@ export function normalizePlate(plate) {
 
     // Bilinmeyen format — olduğu gibi döndür (büyük harf)
     return clean;
-}
-
-/**
- * Fotoğraftan plaka numarası tanı
- * @param {Buffer} imageBuffer - Fotoğraf buffer'ı
- * @returns {Promise<{plate: string|null, raw: string, confidence: number, candidates: string[]}>}
- */
-export async function recognizePlate(imageBuffer) {
-    const w = await getWorker();
-
-    console.log('[OCR] Fotoğraf işleniyor...');
-    const startTime = Date.now();
-
-    // Birden fazla PSM modunu dene — farklı fotoğraf türleri için
-    const psmModes = [
-        { mode: Tesseract.PSM.AUTO, name: 'AUTO' },
-        { mode: Tesseract.PSM.SINGLE_BLOCK, name: 'SINGLE_BLOCK' },
-        { mode: Tesseract.PSM.SINGLE_LINE, name: 'SINGLE_LINE' },
-        { mode: Tesseract.PSM.SPARSE_TEXT, name: 'SPARSE_TEXT' },
-    ];
-
-    let bestResult = { plate: null, raw: '', confidence: 0, candidates: [] };
-
-    for (const { mode, name } of psmModes) {
-        try {
-            await w.setParameters({ tessedit_pageseg_mode: mode });
-            const { data } = await w.recognize(imageBuffer);
-
-            const rawText = data.text.trim();
-            const confidence = data.confidence / 100;
-
-            if (!rawText) {
-                console.log(`[OCR] ${name}: boş sonuç`);
-                continue;
-            }
-
-            console.log(`[OCR] ${name}: "${rawText}" (güven: ${confidence.toFixed(2)})`);
-
-            // Temizle ve aday çıkar
-            const cleanedText = cleanOcrText(rawText);
-            const fixedText = fixCommonMisreads(cleanedText);
-            const candidates = extractPlateCandidates(fixedText);
-
-            if (candidates.length > 0) {
-                const normalizedPlate = normalizePlate(candidates[0]);
-                console.log(`[OCR] ✅ ${name} ile plaka bulundu: "${normalizedPlate}"`);
-
-                const duration = Date.now() - startTime;
-                console.log(`[OCR] Toplam süre: ${duration}ms`);
-
-                return {
-                    plate: normalizedPlate,
-                    raw: rawText,
-                    confidence,
-                    candidates: candidates.map(normalizePlate),
-                };
-            }
-
-            // Aday bulunamadı ama en iyi sonucu sakla
-            if (confidence > bestResult.confidence) {
-                bestResult = { plate: null, raw: rawText, confidence, candidates: [] };
-            }
-        } catch (err) {
-            console.log(`[OCR] ${name} hatası: ${err.message}`);
-        }
-    }
-
-    // Hiçbir modda plaka bulunamadı
-    const duration = Date.now() - startTime;
-    console.log(`[OCR] ❌ Plaka bulunamadı (${psmModes.length} mod denendi, ${duration}ms)`);
-
-    // PSM modunu AUTO'ya geri döndür
-    await w.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.AUTO });
-
-    return bestResult;
-}
-
-/**
- * OCR worker'ı kapat (cleanup)
- */
-export async function terminateWorker() {
-    if (worker) {
-        await worker.terminate();
-        worker = null;
-        console.log('[OCR] Worker kapatıldı');
-    }
 }
