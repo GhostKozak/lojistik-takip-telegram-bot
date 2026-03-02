@@ -53,20 +53,20 @@ git add . && git commit -m "feat(db): add initial schema with trigram search"
 
 ---
 
-## Phase 2 — Telegram Bot Temeli
+## Phase 2 — Telegram Bot Temeli ✅
 > 🎯 Hedef: Botun mesaj alıp yanıt verebilir hale gelmesi
 
-- [ ] `apps/bot/` dizinini kur, bağımlılıkları yükle
+- [x] `apps/bot/` dizinini kur, bağımlılıkları yükle
   ```bash
   cd apps/bot && npm init -y
   npm install grammy @supabase/supabase-js tesseract.js dotenv
   ```
-- [ ] BotFather'dan test bot token'ı al
-- [ ] `src/index.js` — Bot instance ve middleware zinciri
-- [ ] `src/db.js` — Supabase client, CRUD fonksiyonları
-- [ ] `/start` komutu — kullanıcı kaydı
-- [ ] `/yardim` komutu — kullanım kılavuzu
-- [ ] Botun çalıştığını doğrula (polling mode)
+- [x] BotFather'dan test bot token'ı al
+- [x] `src/index.js` — Bot instance ve middleware zinciri
+- [x] `src/db.js` — Supabase client, CRUD fonksiyonları
+- [x] `/start` komutu — kullanıcı kaydı
+- [x] `/yardim` komutu — kullanım kılavuzu
+- [x] Botun çalıştığını doğrula (polling mode)
 
 **Git Checkpoint:**
 ```bash

@@ -1,6 +1,6 @@
 /**
- * Supabase Bağlantı Testi
- * Bu script Supabase bağlantısını doğrular ve veritabanı durumunu kontrol eder.
+ * Supabase Detaylı Tanılama
+ * Schema cache ve API key sorunlarını tespit eder
  */
 
 import 'dotenv/config';
@@ -9,123 +9,133 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-console.log('╔══════════════════════════════════════════╗');
-console.log('║   🔌 Supabase Bağlantı Testi             ║');
-console.log('╚══════════════════════════════════════════╝');
+console.log('🔍 Supabase Detaylı Tanılama');
+console.log('═'.repeat(50));
 console.log();
 
-// 1. Env değişkenlerini kontrol et
-console.log('📋 1. Environment Değişkenleri:');
-console.log(`   SUPABASE_URL:         ${SUPABASE_URL ? '✅ Ayarlandı (' + SUPABASE_URL.substring(0, 30) + '...)' : '❌ EKSİK!'}`);
-console.log(`   SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY ? '✅ Ayarlandı (' + SUPABASE_SERVICE_KEY.substring(0, 15) + '...)' : '❌ EKSİK!'}`);
-console.log();
+// Key format kontrolü
+console.log('📋 API Key Analizi:');
+console.log(`   Key uzunluğu: ${SUPABASE_SERVICE_KEY?.length} karakter`);
+console.log(`   Key başlangıcı: ${SUPABASE_SERVICE_KEY?.substring(0, 20)}...`);
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error('❌ Eksik environment değişkenleri! .env dosyasını kontrol edin.');
-  process.exit(1);
+if (SUPABASE_SERVICE_KEY?.startsWith('eyJ')) {
+  console.log('   ✅ JWT format (doğru)');
+} else {
+  console.log('   ⚠️  JWT formatında DEĞİL!');
+  console.log('   💡 Supabase Dashboard → Settings → API → "service_role" key olmalı');
+  console.log('   💡 Key "eyJ..." ile başlamalı');
 }
+console.log();
 
-// 2. Supabase client oluştur
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-  auth: { persistSession: false }
+  auth: { persistSession: false },
 });
 
-async function testConnection() {
+async function diagnose() {
+  // Test 1: SELECT
+  console.log('🧪 Test 1: SELECT sorgusu');
   try {
-    // 3. Temel bağlantı testi — basit bir sorgu çalıştır
-    console.log('🔗 2. Bağlantı Testi:');
-    
-    // Önce tabloların var olup olmadığını kontrol edelim
-    const tables = ['field_users', 'vehicle_sessions', 'photos'];
-    const tableResults = {};
-    
-    for (const table of tables) {
-      const { data, error, count } = await supabase
-        .from(table)
-        .select('*', { count: 'exact', head: true });
-      
-      if (error) {
-        tableResults[table] = { exists: false, error: error.message };
-      } else {
-        tableResults[table] = { exists: true, count: count ?? 0 };
-      }
-    }
+    const { data, error, status, statusText } = await supabase
+      .from('field_users')
+      .select('*')
+      .limit(1);
 
-    // Sonuçları göster
-    const allExist = Object.values(tableResults).every(r => r.exists);
-    
-    if (allExist) {
-      console.log('   ✅ Supabase bağlantısı başarılı!');
-      console.log();
-      console.log('📊 3. Tablo Durumları:');
-      for (const [table, result] of Object.entries(tableResults)) {
-        console.log(`   ✅ ${table.padEnd(20)} — ${result.count} kayıt`);
-      }
+    console.log(`   HTTP Status: ${status} ${statusText}`);
+    if (error) {
+      console.log(`   ❌ Hata: ${error.message}`);
+      console.log(`   Hata kodu: ${error.code}`);
+      console.log(`   Detay: ${error.details}`);
+      console.log(`   Hint: ${error.hint}`);
     } else {
-      console.log('   ⚠️  Supabase bağlantısı başarılı, fakat bazı tablolar bulunamadı.');
-      console.log();
-      console.log('📊 3. Tablo Durumları:');
-      for (const [table, result] of Object.entries(tableResults)) {
-        if (result.exists) {
-          console.log(`   ✅ ${table.padEnd(20)} — ${result.count} kayıt`);
-        } else {
-          console.log(`   ❌ ${table.padEnd(20)} — ${result.error}`);
-        }
-      }
-      console.log();
-      console.log('💡 Migration çalıştırmanız gerekiyor:');
-      console.log('   Supabase Dashboard → SQL Editor → supabase/migrations/001_initial_schema.sql içeriğini yapıştırın');
+      console.log(`   ✅ Başarılı! ${data?.length ?? 0} kayıt döndü`);
     }
-
-    // 4. pg_trgm extension kontrolü
-    console.log();
-    console.log('🔍 4. Extension Kontrolü:');
-    const { data: extData, error: extError } = await supabase.rpc('pg_trgm_installed', {}).maybeSingle();
-    
-    if (extError) {
-      // Extension check via direct query
-      console.log('   ℹ️  pg_trgm extension kontrolü doğrudan yapılamadı (RPC yok).');
-      console.log('   💡 Migration SQL\'i çalıştırdıysanız, pg_trgm zaten aktif olmalı.');
-    }
-
-    // 5. Storage bucket kontrolü
-    console.log();
-    console.log('🗂️  5. Storage Bucket Kontrolü:');
-    const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
-    
-    if (bucketError) {
-      console.log(`   ❌ Storage erişim hatası: ${bucketError.message}`);
-    } else {
-      const vehicleBucket = buckets?.find(b => b.name === 'vehicle-photos');
-      if (vehicleBucket) {
-        console.log('   ✅ "vehicle-photos" bucket mevcut');
-      } else {
-        console.log('   ⚠️  "vehicle-photos" bucket bulunamadı');
-        console.log(`   📋 Mevcut bucket\'lar: ${buckets?.map(b => b.name).join(', ') || '(yok)'}`);
-        console.log('   💡 Supabase Dashboard → Storage → "New Bucket" → "vehicle-photos" oluşturun');
-      }
-    }
-
-    // Özet
-    console.log();
-    console.log('═'.repeat(44));
-    if (allExist) {
-      console.log('🎉 Tüm kontroller başarılı! Veritabanı kullanıma hazır.');
-    } else {
-      console.log('⚠️  Bazı adımlar tamamlanmamış. Yukarıdaki 💡 ipuçlarını takip edin.');
-    }
-    console.log('═'.repeat(44));
-
-  } catch (err) {
-    console.error();
-    console.error('❌ Bağlantı hatası:', err.message);
-    console.error();
-    console.error('Olası sebepler:');
-    console.error('  1. SUPABASE_URL yanlış');
-    console.error('  2. SUPABASE_SERVICE_KEY yanlış veya expired');
-    console.error('  3. İnternet bağlantı sorunu');
-    process.exit(1);
+  } catch (e) {
+    console.log(`   ❌ Exception: ${e.message}`);
   }
+  console.log();
+
+  // Test 2: INSERT
+  console.log('🧪 Test 2: INSERT sorgusu (test kullanıcı)');
+  try {
+    const { data, error, status } = await supabase
+      .from('field_users')
+      .insert({
+        telegram_id: 9999999999,
+        full_name: 'Test Kullanıcı',
+        username: 'test_user',
+      })
+      .select()
+      .single();
+
+    console.log(`   HTTP Status: ${status}`);
+    if (error) {
+      console.log(`   ❌ Hata: ${error.message}`);
+      console.log(`   Hata kodu: ${error.code}`);
+    } else {
+      console.log(`   ✅ Başarılı! Kullanıcı ID: ${data?.id}`);
+      // Temizlik - oluşturulan test kaydını sil
+      await supabase.from('field_users').delete().eq('telegram_id', 9999999999);
+      console.log('   🧹 Test kaydı silindi');
+    }
+  } catch (e) {
+    console.log(`   ❌ Exception: ${e.message}`);
+  }
+  console.log();
+
+  // Test 3: UPSERT (bot'un kullandığı yöntem)
+  console.log('🧪 Test 3: UPSERT sorgusu');
+  try {
+    const { data, error, status } = await supabase
+      .from('field_users')
+      .upsert(
+        {
+          telegram_id: 8888888888,
+          full_name: 'Test Upsert',
+          username: 'test_upsert',
+        },
+        { onConflict: 'telegram_id' }
+      )
+      .select()
+      .single();
+
+    console.log(`   HTTP Status: ${status}`);
+    if (error) {
+      console.log(`   ❌ Hata: ${error.message}`);
+      console.log(`   Hata kodu: ${error.code}`);
+    } else {
+      console.log(`   ✅ Başarılı! Kullanıcı ID: ${data?.id}`);
+      // Temizlik
+      await supabase.from('field_users').delete().eq('telegram_id', 8888888888);
+      console.log('   🧹 Test kaydı silindi');
+    }
+  } catch (e) {
+    console.log(`   ❌ Exception: ${e.message}`);
+  }
+  console.log();
+
+  // Test 4: REST API doğrudan kontrol
+  console.log('🧪 Test 4: REST API doğrudan kontrol');
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/field_users?select=*&limit=1`, {
+      headers: {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+      },
+    });
+    console.log(`   HTTP Status: ${response.status} ${response.statusText}`);
+    const body = await response.text();
+    console.log(`   Response: ${body.substring(0, 200)}`);
+  } catch (e) {
+    console.log(`   ❌ Exception: ${e.message}`);
+  }
+
+  console.log();
+  console.log('═'.repeat(50));
+  console.log('📌 Eğer hatalar devam ediyorsa:');
+  console.log('   1. Supabase Dashboard → Settings → API bölümünden');
+  console.log('      "service_role" key\'i kopyalayın (eyJ... ile başlar)');
+  console.log('   2. .env dosyasındaki SUPABASE_SERVICE_KEY değerini güncelleyin');
+  console.log('   3. Dashboard → Settings → General → "Reload schema cache" butonuna tıklayın');
 }
 
-testConnection();
+diagnose();
