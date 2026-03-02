@@ -75,20 +75,22 @@ git add . && git commit -m "feat(bot): basic bot with start and help commands"
 
 ---
 
-## Phase 3 — OCR Entegrasyonu
-> 🎯 Hedef: Fotoğraftan Türk plaka numarası okuma
+## Phase 3 — OCR Entegrasyonu ✅
+> 🎯 Hedef: Fotoğraftan çoklu ülke plaka numarası okuma
 
-- [ ] `src/ocr.js` — Tesseract.js worker setup
-- [ ] Türkçe dil paketini (`tur`) yapılandır
-- [ ] Plaka regex pattern'i tanımla (`/^\d{2}\s?[A-Z]{1,3}\s?\d{2,4}$/`)
-- [ ] `recognizePlate(imageBuffer)` fonksiyonunu yaz
-- [ ] OCR güven eşiği (confidence threshold) ayarla
-- [ ] 5+ örnek plaka fotoğrafı ile test et
-- [ ] Edge case'leri ele al (bulanık, eğik, gece çekimi)
+- [x] `src/ocr.js` — Tesseract.js worker setup (lazy singleton)
+- [x] İngilizce dil paketi (`eng`) — tüm Latin harfli plakalar için
+- [x] Çoklu ülke plaka pattern'leri (TR, BG, AZ, MK + genel format)
+- [x] `recognizePlate(imageBuffer)` fonksiyonunu yaz
+- [x] `normalizePlate(plate)` — formatı algılayıp güzel gösterim
+- [x] OCR yaygın hata düzeltme (`fixCommonMisreads`)
+- [x] OCR güven eşiği (confidence threshold) ayarla
+- [x] Unit testler yazıldı (7/7 geçti)
+- [ ] Gerçek plaka fotoğrafları ile test et (Phase 4 ile birlikte)
 
 **Git Checkpoint:**
 ```bash
-git add . && git commit -m "feat(bot): add tesseract OCR plate recognition"
+git add . && git commit -m "feat(bot): add multi-country OCR plate recognition"
 ```
 
 ---
