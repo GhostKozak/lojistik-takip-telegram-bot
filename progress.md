@@ -7,21 +7,21 @@
 ## Phase 0 — Proje Kurulumu ve Altyapı
 > 🎯 Hedef: Geliştirme ortamının hazır hale getirilmesi
 
-- [ ] Monorepo yapısını oluştur (`apps/bot`, `apps/web`, `supabase/`)
-- [ ] Git reposunu başlat, `.gitignore` ekle
+- [x] Monorepo yapısını oluştur (`apps/bot`, `apps/web`, `supabase/`)
+- [x] Git reposunu başlat, `.gitignore` ekle
   ```bash
   git init
   git add .
   git commit -m "chore: initial project structure"
   ```
-- [ ] Supabase projesi oluştur (dashboard.supabase.com)
-- [ ] Supabase CLI kur ve yerel geliştirme ortamını bağla
+- [x] Supabase projesi oluştur (dashboard.supabase.com)
+- [x] Supabase CLI kur ve yerel geliştirme ortamını bağla
   ```bash
   npx supabase init
   npx supabase link --project-ref <PROJECT_ID>
   ```
-- [ ] `.env.example` dosyalarını oluştur (bot + web)
-- [ ] README.md yaz
+- [x] `.env.example` dosyalarını oluştur (bot + web)
+- [x] README.md yaz
 
 **Git Checkpoint:**
 ```bash
@@ -30,18 +30,18 @@ git add . && git commit -m "chore: configure supabase and env templates"
 
 ---
 
-## Phase 1 — Veritabanı Şeması
+## Phase 1 — Veritabanı Şeması ✅
 > 🎯 Hedef: Tüm tabloların ve indekslerin oluşturulması
 
-- [ ] `pg_trgm` extension'ı aktifleştir
-- [ ] `field_users` tablosunu oluştur
-- [ ] `vehicle_sessions` tablosunu oluştur (plaka bazlı)
-- [ ] `photos` tablosunu oluştur (session'a bağlı)
-- [ ] Trigram GIN indeksini oluştur (`plate_number`)
-- [ ] Performans indekslerini ekle
-- [ ] Supabase Storage bucket oluştur (`vehicle-photos`)
-- [ ] RLS politikalarını yaz
-- [ ] Migration dosyasını test et
+- [x] `pg_trgm` extension'ı aktifleştir
+- [x] `field_users` tablosunu oluştur
+- [x] `vehicle_sessions` tablosunu oluştur (plaka bazlı)
+- [x] `photos` tablosunu oluştur (session'a bağlı)
+- [x] Trigram GIN indeksini oluştur (`plate_number`)
+- [x] Performans indekslerini ekle
+- [x] Supabase Storage bucket oluştur (`vehicle-photos`)
+- [x] RLS politikalarını yaz
+- [x] Migration dosyasını test et
   ```bash
   npx supabase db push
   ```
