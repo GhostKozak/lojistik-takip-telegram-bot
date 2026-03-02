@@ -1,0 +1,28 @@
+{
+  "name": "lojistik-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for logistics photo management with OCR",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test src/__tests__/*.test.js"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "ocr",
+    "logistics"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.98.0",
+    "dotenv": "^17.3.1",
+    "grammy": "^1.41.0",
+    "tesseract.js": "^7.0.0"
+  }
+}
