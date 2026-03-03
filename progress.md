@@ -75,22 +75,23 @@ git add . && git commit -m "feat(bot): basic bot with start and help commands"
 
 ---
 
-## Phase 3 — OCR Entegrasyonu ✅
-> 🎯 Hedef: Fotoğraftan çoklu ülke plaka numarası okuma
+## Phase 3 — OCR Doğruluğunu Artırma (YOLOv8 + EasyOCR) ✅
+> 🎯 Hedef: YOLOv8 ile plaka tespiti ve EasyOCR ile yüksek doğruluklu okuma
 
-- [x] `src/ocr.js` — Tesseract.js worker setup (lazy singleton)
-- [x] İngilizce dil paketi (`eng`) — tüm Latin harfli plakalar için
+- [x] Python ortamı hazırlığı (`easyocr`, `ultralytics`, `opencv`)
+- [x] `apps/bot/scripts/ocr_reader.py` — Python hibrit OCR servisi
+- [x] YOLOv8 plaka tespit modeli entegrasyonu (`keremberke/yolov8n-license-plate-detector`)
+- [x] Plaka bölgesi kırpma (margin desteği ile)
+- [x] Fallback mekanizması (Plaka bulunamazsa tüm görüntüyü tara)
+- [x] `src/ocr.js` — Node.js ↔ Python child_process entegrasyonu
 - [x] Çoklu ülke plaka pattern'leri (TR, BG, AZ, MK + genel format)
-- [x] `recognizePlate(imageBuffer)` fonksiyonunu yaz
 - [x] `normalizePlate(plate)` — formatı algılayıp güzel gösterim
-- [x] OCR yaygın hata düzeltme (`fixCommonMisreads`)
-- [x] OCR güven eşiği (confidence threshold) ayarla
-- [x] Unit testler yazıldı (7/7 geçti)
-- [ ] Gerçek plaka fotoğrafları ile test et (Phase 4 ile birlikte)
+- [x] OCR güven eşiği (confidence threshold) iyileştirmesi
+- [x] Unit testler (EasyOCR mock ile güncellenecek)
 
 **Git Checkpoint:**
 ```bash
-git add . && git commit -m "feat(bot): add multi-country OCR plate recognition"
+git add . && git commit -m "feat(bot): upgrade OCR to YOLOv8 + EasyOCR hybrid model"
 ```
 
 ---

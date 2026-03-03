@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR & YOLOv8 Test Board</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .upload-section {
+            background: var(--card);
+            border: 2px dashed #475569;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-section:hover {
+            border-color: var(--primary);
+            background: #1e293b;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .result-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .image-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        img {
+            max-width: 100%;
+            display: block;
+        }
+
+        .box-overlay {
+            position: absolute;
+            border: 2px solid;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .box-label {
+            position: absolute;
+            top: -20px;
+            left: 0;
+            background: inherit;
+            color: white;
+            font-size: 10px;
+            padding: 2px 4px;
+            white-space: nowrap;
+        }
+
+        .candidate-tag {
+            background: #2563eb;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            display: inline-block;
+        }
+
+        .debug-info {
+            font-family: monospace;
+            background: #000;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            overflow-x: auto;
+            max-height: 200px;
+            margin-top: 10px;
+            color: #10b981;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Plate Finder YOLOv8 + EasyOCR</h1>
+            <p>Fotoğrafları buraya bırakın veya tıklayın (Toplu test desteklenir)</p>
+        </div>
+
+        <div class="upload-section" onclick="document.getElementById('fileInput').click()">
+            <p>📁 Dosyaları Seçin veya Sürükleyin</p>
+            <input type="file" id="fileInput" multiple accept="image/*" style="display: none"
+                onchange="handleFiles(this.files)">
+        </div>
+
+        <div id="results" class="results-grid"></div>
+    </div>
+
+    <script>
+        async function handleFiles(files) {
+            for (let file of files) {
+                const card = createResultCard(file);
+                document.getElementById('results').prepend(card);
+                await uploadAndProcess(file, card);
+            }
+        }
+
+        function createResultCard(file) {
+            const div = document.createElement('div');
+            const fileId = Math.random().toString(36).substr(2, 9);
+            div.className = 'result-card';
+            div.innerHTML = `
+                <h3 style="margin-top:0">${file.name}</h3>
+                <div class="image-container">
+                    <img src="${URL.createObjectURL(file)}" id="img-${fileId}">
+                    <div id="overlay-${fileId}" style="position: absolute; top:0; left:0; width:100%; height:100%"></div>
+                </div>
+                <div id="info-${fileId}">⏳ İşleniyor...</div>
+            `;
+            div.dataset.fileId = fileId;
+            return div;
+        }
+
+        async function uploadAndProcess(file, card) {
+            const fileId = card.dataset.fileId;
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const res = await fetch('/test', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                const info = document.getElementById('info-' + fileId);
+                const overlay = document.getElementById('overlay-' + fileId);
+                const img = document.getElementById('img-' + fileId);
+
+                if (data.error) {
+                    info.innerHTML = `<span style="color:#ef4444">❌ Hata: ${data.error}</span>`;
+                    return;
+                }
+
+                let html = '<div>';
+                const candidates = data.debug?.candidates || [];
+                if (candidates.length > 0) {
+                    candidates.forEach(c => {
+                        html += `<div class="candidate-tag">${c.text} (% ${Math.round((c.confidence || c.conf || 0) * 100)})</div>`;
+                    });
+                } else {
+                    html += '<i>Plaka bulunamadı</i>';
+                }
+                html += '</div>';
+
+                html += `<div class="debug-info">
+                    YOLO: ${data.debug?.yolo_detections || 0} tespit | 
+                    OCR: ${data.debug?.total_detections || 0} metin
+                </div>`;
+
+                info.innerHTML = html;
+
+                if (img.complete) drawBoxes(data.debug, overlay, img);
+                else img.onload = () => drawBoxes(data.debug, overlay, img);
+
+            } catch (err) {
+                document.getElementById('info-' + fileId).innerHTML = '❌ Hata oluştu';
+            }
+        }
+
+        function drawBoxes(debug, overlay, img) {
+            if (!debug) return;
+            const scaleX = img.clientWidth / img.naturalWidth;
+            const scaleY = img.clientHeight / img.naturalHeight;
+
+            overlay.innerHTML = ''; // Clear previous
+
+            const drawBox = (box, color, labelText = null, zIndex = 1) => {
+                if (!box || !Array.isArray(box) || box.length < 2) return;
+
+                // Extract all x and y coordinates from whatever format we have (points array or just bounds)
+                const x_coords = box.map(p => p[0]);
+                const y_coords = box.map(p => p[1]);
+
+                const minX = Math.min(...x_coords) * scaleX;
+                const maxX = Math.max(...x_coords) * scaleX;
+                const minY = Math.min(...y_coords) * scaleY;
+                const maxY = Math.max(...y_coords) * scaleY;
+
+                const div = document.createElement('div');
+                div.style.left = minX + 'px';
+                div.style.top = minY + 'px';
+                div.style.width = (maxX - minX) + 'px';
+                div.style.height = (maxY - minY) + 'px';
+                div.style.borderColor = color;
+                div.style.borderWidth = labelText ? '3px' : '1px';
+                div.className = 'box-overlay';
+                div.style.zIndex = zIndex;
+
+                if (labelText) {
+                    const label = document.createElement('div');
+                    label.className = 'box-label';
+                    label.style.background = color;
+                    label.innerText = labelText;
+                    div.appendChild(label);
+                }
+                overlay.appendChild(div);
+            };
+
+            if (debug.all_texts && Array.isArray(debug.all_texts)) {
+                debug.all_texts.forEach(t => drawBox(t.bbox, 'rgba(255,255,255,0.2)'));
+            }
+
+            if (debug.candidates && Array.isArray(debug.candidates)) {
+                debug.candidates.forEach((c, idx) => {
+                    const color = idx === 0 ? '#fbbf24' : '#60a5fa';
+                    const textValue = c.text || c.plate || '???';
+                    drawBox(c.bbox, color, `#${idx + 1} ${textValue}`, 10);
+                });
+            }
+        }
+    </script>
+</body>
+
+</html>
