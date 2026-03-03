@@ -1,6 +1,6 @@
 # 📋 Proje İlerleme Takibi — Lojistik Fotoğraf Yönetim Sistemi
 
-> Son güncelleme: 2026-03-02
+> Son güncelleme: 2026-03-03
 
 ---
 
@@ -79,15 +79,16 @@ git add . && git commit -m "feat(bot): basic bot with start and help commands"
 > 🎯 Hedef: YOLOv8 ile plaka tespiti ve EasyOCR ile yüksek doğruluklu okuma
 
 - [x] Python ortamı hazırlığı (`easyocr`, `ultralytics`, `opencv`)
-- [x] `apps/bot/scripts/ocr_reader.py` — Python hibrit OCR servisi
+- [x] `apps/bot/scripts/ocr_reader.py` — Python hibrit OCR servisi (V5)
 - [x] YOLOv8 plaka tespit modeli entegrasyonu (`keremberke/yolov8n-license-plate-detector`)
-- [x] Plaka bölgesi kırpma (margin desteği ile)
+- [x] Plaka bölgesi kırpma ve koordinat ofsetleme (OpenCV)
 - [x] Fallback mekanizması (Plaka bulunamazsa tüm görüntüyü tara)
-- [x] `src/ocr.js` — Node.js ↔ Python child_process entegrasyonu
-- [x] Çoklu ülke plaka pattern'leri (TR, BG, AZ, MK + genel format)
+- [x] `src/ocr.js` — PlateRecognizer.com (Cloud API) entegrasyonu
+- [x] `src/tester-server.js` & `tester.html` — Görsel Dashboard (V7)
+- [x] Çoklu ülke plaka pattern'leri (TR, BG, EU + genel format)
 - [x] `normalizePlate(plate)` — formatı algılayıp güzel gösterim
 - [x] OCR güven eşiği (confidence threshold) iyileştirmesi
-- [x] Unit testler (EasyOCR mock ile güncellenecek)
+- [x] Marka ve Telefon numarası filtreleme (Blacklist V5)
 
 **Git Checkpoint:**
 ```bash
@@ -226,8 +227,8 @@ git push origin main --tags
 
 | Kriter                                              | Durum |
 | --------------------------------------------------- | ----- |
-| Saha çalışanı Telegram'dan fotoğraf atabiliyor      | ⬜     |
-| Bot plakayı OCR ile okuyabiliyor                    | ⬜     |
+| Saha çalışanı Telegram'dan fotoğraf atabiliyor      | ✅     |
+| Bot plakayı OCR ile okuyabiliyor                    | ✅     |
 | Peş peşe atılan fotoğraflar aynı araçta gruplanıyor | ⬜     |
 | Ofis çalışanı web panelden plaka arayabiliyor       | ⬜     |
 | Bulanık arama çalışıyor (eksik karakter ile)        | ⬜     |
