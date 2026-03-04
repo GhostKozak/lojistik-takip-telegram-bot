@@ -179,12 +179,14 @@ git add . && git commit -m "feat(web): scaffold next.js dashboard"
 - [x] **Tarih Filtresi** — GTE/LTE bazlı premium tarih seçici ✅
 - [x] **Pagination / Infinite Scroll** — "Daha Fazla Yükle" sistemi ✅
 - [x] **Toplu İndirme** — Oturuma ait tüm fotoğrafları ZIP olarak indir (JSZip) ✅
+- [x] **Session Notları** — Anlık kaydedilen oturum yorumları ✅
+- [x] **Web Paneli Girişi** — Supabase SSR ile Login sayfası ve Route Middleware ✅
 
 **Not:** Realtime özelliğini aktif etmek için `supabase/migrations/002_enable_realtime.sql` dosyasındaki komutların Supabase SQL Editor'da çalıştırılması gerekmektedir.
 
 **Git Checkpoint:**
 ```bash
-git add . && git commit -m "feat(web): add bulk photo download (ZIP) functionality"
+git add . && git commit -m "feat(web): add login page, auth middleware and logout button"
 ```
 
 ---

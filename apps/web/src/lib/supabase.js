@@ -1,9 +1,4 @@
-/**
- * Supabase Client — Web Panel
- * Anon key ile read-only erişim (RLS politikalarına tabi)
- */
-
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -14,6 +9,5 @@ if (!supabaseUrl || !supabaseAnonKey) {
     );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { persistSession: false },
-});
+// Client komponentler tarafından kullanılacak standart browser istemcisi
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);

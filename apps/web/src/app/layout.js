@@ -1,4 +1,6 @@
 import './globals.css';
+import { createClient } from '@/lib/supabase-server';
+import { logoutAction } from './logoutActions';
 
 export const metadata = {
   title: 'Lojistik Takip — Araç Fotoğraf Yönetim Paneli',
@@ -6,7 +8,10 @@ export const metadata = {
   keywords: 'lojistik, araç takip, plaka, konteyner, mühür, fotoğraf yönetimi',
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <html lang="tr">
       <body>
@@ -21,6 +26,11 @@ export default function RootLayout({ children }) {
             </div>
             <div className="navbar-info">
               <span>📡 Dashboard</span>
+              {user && (
+                <form action={logoutAction} style={{ display: 'inline', marginLeft: '16px' }}>
+                  <button type="submit" className="logout-btn">Çıkış Yap 🚪</button>
+                </form>
+              )}
             </div>
           </nav>
           <main>{children}</main>

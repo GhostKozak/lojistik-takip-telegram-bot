@@ -183,6 +183,25 @@ a:hover {
     font-size: 0.875rem;
 }
 
+.logout-btn {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: var(--accent-danger);
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.logout-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: white;
+}
+
 /* =============================================
    Stats Cards Row
    ============================================= */
