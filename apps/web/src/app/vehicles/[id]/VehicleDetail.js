@@ -6,11 +6,14 @@ import JSZip from 'jszip';
 import { supabase } from '@/lib/supabase';
 import styles from './VehicleDetail.module.css';
 
-export default function VehicleDetail({ session, photos }) {
+export default function VehicleDetail({ session: initialSession, photos: initialPhotos }) {
+    const [session, setSession] = useState(initialSession);
+    const [photos, setPhotos] = useState(initialPhotos);
     const [lightboxIndex, setLightboxIndex] = useState(null);
     const [downloading, setDownloading] = useState(false);
     const [notes, setNotes] = useState(session.notes || '');
     const [isSaving, setIsSaving] = useState(false);
+    const [newUpdateAnim, setNewUpdateAnim] = useState(false);
 
     const userName = session.field_users?.full_name || 'Bilinmeyen';
 
@@ -56,6 +59,36 @@ export default function VehicleDetail({ session, photos }) {
 
         return () => clearTimeout(timer);
     }, [notes, session.id, session.notes]);
+
+    // Supabase Real-time Subscription
+    useEffect(() => {
+        const channel = supabase
+            .channel(`vehicle_detail_${session.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'photos', filter: `session_id=eq.${session.id}` }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setPhotos(prev => [...prev, payload.new]);
+                    setNewUpdateAnim(true);
+                    setTimeout(() => setNewUpdateAnim(false), 3000);
+                } else if (payload.eventType === 'UPDATE') {
+                    setPhotos(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+                } else if (payload.eventType === 'DELETE') {
+                    setPhotos(prev => prev.filter(p => p.id !== payload.old.id));
+                }
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'vehicle_sessions', filter: `id=eq.${session.id}` }, (payload) => {
+                // Use functional update to preserve joined data like field_users
+                setSession(prev => ({ ...prev, ...payload.new }));
+                if (payload.new.status === 'closed' && session.status !== 'closed') {
+                    setNewUpdateAnim(true);
+                    setTimeout(() => setNewUpdateAnim(false), 3000);
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [session.id, session.status]);
 
     // Bulk Download
     const downloadAll = async () => {
@@ -122,6 +155,11 @@ export default function VehicleDetail({ session, photos }) {
                     </span>
                 </div>
                 <div className={styles.actions}>
+                    {newUpdateAnim && (
+                        <div className={styles.updateToast} style={{ display: 'inline-flex', alignItems: 'center', background: 'var(--accent-success)', color: 'white', padding: '0.4rem 0.8rem', borderRadius: 'var(--radius)', fontSize: '0.85rem', marginRight: '1rem', animation: 'fadeIn 0.3s' }}>
+                            ✨ Yeni güncelleme
+                        </div>
+                    )}
                     <button
                         className={styles.bulkDownloadBtn}
                         onClick={downloadAll}
