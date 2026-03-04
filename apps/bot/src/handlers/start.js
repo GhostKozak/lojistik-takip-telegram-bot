@@ -4,6 +4,7 @@
  */
 
 import { upsertUser, getUserByTelegramId } from '../db.js';
+import { getLang, t } from '../i18n.js';
 
 /**
  * /start komut handler'ı
@@ -11,9 +12,10 @@ import { upsertUser, getUserByTelegramId } from '../db.js';
  */
 export async function handleStart(ctx) {
     const from = ctx.from;
+    const lang = getLang(ctx);
 
     if (!from) {
-        await ctx.reply('❌ Kullanıcı bilgisi alınamadı.');
+        await ctx.reply(t(lang, 'errors', 'noUser'));
         return;
     }
 
@@ -28,23 +30,8 @@ export async function handleStart(ctx) {
         const isNew = !user.is_authorized;
 
         const welcomeMessage = isNew
-            ? `🚛 *Hoş geldin, ${from.first_name}!*
-
-Lojistik Fotoğraf Yönetim Sistemi'ne kaydoldun.
-
-📸 *Nasıl Kullanılır:*
-1️⃣ Araç plakasının fotoğrafını çek ve gönder
-2️⃣ Bot plakayı otomatik okuyacak (OCR)
-3️⃣ Ardından konteyner ve mühür fotoğraflarını gönder
-4️⃣ Tüm fotoğraflar aynı araça gruplanacak
-5️⃣ İşin bittiğinde /done yaz veya 5 dk bekle
-
-ℹ️ Detaylı bilgi için /yardim yazabilirsin.`
-            : `👋 *Tekrar hoş geldin, ${from.first_name}!*
-
-Hesabın zaten aktif. Fotoğraf göndermeye başlayabilirsin.
-
-ℹ️ Komutlar için /yardim yaz.`;
+            ? t(lang, 'start', 'welcomeNew', from.first_name)
+            : t(lang, 'start', 'welcomeBack', from.first_name);
 
         await ctx.reply(welcomeMessage, { parse_mode: 'Markdown' });
 
@@ -53,6 +40,6 @@ Hesabın zaten aktif. Fotoğraf göndermeye başlayabilirsin.
         );
     } catch (err) {
         console.error('[START] Hata:', err.message);
-        await ctx.reply('❌ Bir hata oluştu. Lütfen tekrar dene.');
+        await ctx.reply(t(lang, 'errors', 'errorStart'));
     }
 }

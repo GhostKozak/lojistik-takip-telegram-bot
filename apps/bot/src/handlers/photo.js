@@ -21,6 +21,7 @@ import {
     getTimeoutDuration,
 } from '../session.js';
 import { InlineKeyboard } from 'grammy';
+import { getLang, t } from '../i18n.js';
 
 // Manuel plaka girişi bekleyen kullanıcılar
 // Key: telegramId, Value: { fileId, timestamp }
@@ -55,21 +56,21 @@ export async function handlePhoto(ctx) {
 
         if (activeSession) {
             // ---- Açık session'a fotoğraf ekle ----
-            await addPhotoToSession(ctx, activeSession, fileId, user);
+            await addPhotoToSession(ctx, activeSession, fileId, user, getLang(ctx));
         } else {
             // ---- OCR ile plaka oku ve yeni session aç ----
-            await processNewPlatePhoto(ctx, fileId, user);
+            await processNewPlatePhoto(ctx, fileId, user, getLang(ctx));
         }
     } catch (err) {
         console.error('[PHOTO] Hata:', err.message);
-        await ctx.reply('❌ Fotoğraf işlenirken bir hata oluştu. Tekrar dene.');
+        await ctx.reply(t(getLang(ctx), 'photo', 'errorProcessPhoto'));
     }
 }
 
 /**
  * Açık session'a fotoğraf ekle
  */
-async function addPhotoToSession(ctx, session, fileId, user) {
+async function addPhotoToSession(ctx, session, fileId, user, lang) {
     // Fotoğrafı Supabase Storage'a yükle
     let storagePath = `pending/${fileId}`;
     let publicUrl = `pending/${fileId}`;
@@ -99,14 +100,12 @@ async function addPhotoToSession(ctx, session, fileId, user) {
 
     // Sayacı artır ve timeout'u sıfırla
     incrementPhotoCount(ctx.from.id);
-    resetSessionTimeout(ctx.from.id, createTimeoutCallback(ctx));
+    resetSessionTimeout(ctx.from.id, createTimeoutCallback(ctx, lang));
 
     const count = session.photoCount + 1;
 
     await ctx.reply(
-        `📸 Fotoğraf eklendi! (${count}. fotoğraf)\n` +
-        `🚛 Plaka: \`${session.plateNumber}\`\n\n` +
-        `📸 Göndermeye devam et veya /done ile bitir.`,
+        t(lang, 'photo', 'photoAdded', count, session.plateNumber),
         { parse_mode: 'Markdown' }
     );
 
@@ -116,9 +115,9 @@ async function addPhotoToSession(ctx, session, fileId, user) {
 /**
  * Yeni plaka fotoğrafı işle (OCR)
  */
-async function processNewPlatePhoto(ctx, fileId, user) {
+async function processNewPlatePhoto(ctx, fileId, user, lang) {
     // "İşleniyor" mesajı
-    const statusMsg = await ctx.reply('🔍 Plaka okunuyor...');
+    const statusMsg = await ctx.reply(t(lang, 'photo', 'processing'));
 
     try {
         // Fotoğrafı indir
@@ -147,15 +146,13 @@ async function processNewPlatePhoto(ctx, fileId, user) {
         if (result.plate) {
             // ---- OCR bir şey buldu — Butonlu doğrulama sor ----
             const keyboard = new InlineKeyboard()
-                .text(`✅ Onayla: ${result.plate}`, `plate_ok:${result.plate}`)
+                .text(t(lang, 'photo', 'btnApprove', result.plate), `plate_ok:${result.plate}`)
                 .row()
-                .switchInlineCurrent(`✏️ Düzenle`, result.plate)
-                .text(`❌ İptal / Kendim Yazacağım`, `plate_manual`);
+                .switchInlineCurrent(t(lang, 'photo', 'btnEdit'), result.plate)
+                .text(t(lang, 'photo', 'btnCancel'), `plate_manual`);
 
             await ctx.reply(
-                `🔍 *OCR Tahmini:* \`${result.plate}\`\n` +
-                `📊 Güven: ${Math.round(result.confidence * 100)}%\n\n` +
-                `Lütfen seçim yapın:`,
+                t(lang, 'photo', 'ocrResult', result.plate, Math.round(result.confidence * 100)),
                 {
                     parse_mode: 'Markdown',
                     reply_markup: keyboard
@@ -164,9 +161,7 @@ async function processNewPlatePhoto(ctx, fileId, user) {
         } else {
             // ---- OCR başarısız — manuel giriş iste ----
             await ctx.reply(
-                `⚠️ *Plaka okunamadı*\n\n` +
-                `✏️ Lütfen plaka numarasını *elle yaz*\n` +
-                `Örnek: \`34 ABC 1234\``,
+                t(lang, 'photo', 'ocrFailed'),
                 { parse_mode: 'Markdown' }
             );
         }
@@ -178,8 +173,7 @@ async function processNewPlatePhoto(ctx, fileId, user) {
         } catch { /* ignore */ }
 
         await ctx.reply(
-            '❌ Fotoğraf işlenirken hata oluştu.\n\n' +
-            '✏️ Plaka numarasını elle yazabilirsin (örn: `34 ABC 1234`)',
+            t(lang, 'photo', 'errorPhotoFail'),
             { parse_mode: 'Markdown' }
         );
 
@@ -198,6 +192,7 @@ async function processNewPlatePhoto(ctx, fileId, user) {
  */
 export async function handleManualPlateInput(ctx) {
     const from = ctx.from;
+    const lang = getLang(ctx);
     if (!from) return false;
 
     const pending = pendingManualInput.get(from.id);
@@ -214,7 +209,7 @@ export async function handleManualPlateInput(ctx) {
 
     // Minimum uzunluk kontrolü
     if (text.length < 4) {
-        await ctx.reply('⚠️ Plaka çok kısa. Lütfen tam plaka numarasını yaz.');
+        await ctx.reply(t(lang, 'photo', 'plateShort'));
         return true;
     }
 
@@ -233,7 +228,7 @@ export async function handleManualPlateInput(ctx) {
             plateNumber: normalizedPlate,
             plateRaw: text,
             confidence: 0, // Manuel giriş
-            onTimeout: createTimeoutCallback(ctx),
+            onTimeout: createTimeoutCallback(ctx, lang),
         });
 
         // Bekleyen fotoğrafı Supabase Storage'a yükle ve kaydet
@@ -267,11 +262,7 @@ export async function handleManualPlateInput(ctx) {
         pendingManualInput.delete(from.id);
 
         await ctx.reply(
-            `✅ *Plaka kaydedildi!*\n\n` +
-            `🚛 Plaka: \`${normalizedPlate}\`\n` +
-            `✏️ Manuel giriş\n\n` +
-            `📸 Şimdi konteyner ve mühür fotoğraflarını gönderebilirsin.\n` +
-            `⏰ ${getTimeoutDuration()} içinde otomatik kapanır veya /done ile bitir.`,
+            t(lang, 'photo', 'plateSaved', normalizedPlate, getTimeoutDuration(lang)),
             { parse_mode: 'Markdown' }
         );
 
@@ -279,7 +270,7 @@ export async function handleManualPlateInput(ctx) {
         return true;
     } catch (err) {
         console.error('[PHOTO] Manuel giriş hatası:', err.message);
-        await ctx.reply('❌ Plaka kaydedilirken hata oluştu. Tekrar dene.');
+        await ctx.reply(t(lang, 'photo', 'errorSavePlate'));
         return true;
     }
 }
@@ -291,13 +282,14 @@ export async function handleManualPlateInput(ctx) {
 export async function handleCallbackQuery(ctx) {
     const data = ctx.callbackQuery.data;
     const from = ctx.from;
+    const lang = getLang(ctx);
 
     if (data.startsWith('plate_ok:')) {
         const plate = data.split(':')[1];
         const pending = pendingManualInput.get(from.id);
 
         if (!pending) {
-            await ctx.answerCallbackQuery({ text: '⚠️ Zaman aşımı veya geçersiz işlem.', show_alert: true });
+            await ctx.answerCallbackQuery({ text: t(lang, 'photo', 'cbTimeout'), show_alert: true });
             return;
         }
 
@@ -305,7 +297,7 @@ export async function handleCallbackQuery(ctx) {
             await ctx.answerCallbackQuery();
 
             // Mevcut mesajı güncelle (butonları kaldır)
-            await ctx.editMessageText(`✅ *Plaka onaylandı:* \`${plate}\``, { parse_mode: 'Markdown' });
+            await ctx.editMessageText(t(lang, 'photo', 'plateApproved', plate), { parse_mode: 'Markdown' });
 
             // Session aç
             const user = await getUserByTelegramId(from.id);
@@ -317,7 +309,7 @@ export async function handleCallbackQuery(ctx) {
                 plateNumber: normalizedPlate,
                 plateRaw: plate,
                 confidence: pending.ocrResult?.confidence || 0.8,
-                onTimeout: createTimeoutCallback(ctx),
+                onTimeout: createTimeoutCallback(ctx, lang),
             });
 
             // Fotoğrafı Supabase Storage'a yükle ve kaydet
@@ -350,39 +342,34 @@ export async function handleCallbackQuery(ctx) {
             pendingManualInput.delete(from.id);
 
             await ctx.reply(
-                `✅ *Oturum Başlatıldı!*\n\n` +
-                `🚛 Plaka: \`${normalizedPlate}\`\n\n` +
-                `📸 Şimdi diğer fotoğrafları (konteyner, mühür vb.) gönderebilirsin.`,
+                t(lang, 'photo', 'sessionStarted', normalizedPlate),
                 { parse_mode: 'Markdown' }
             );
         } catch (err) {
             console.error('[CB] Onay hatası:', err.message);
-            await ctx.answerCallbackQuery({ text: '❌ Bir hata oluştu.', show_alert: true });
+            await ctx.answerCallbackQuery({ text: t(lang, 'photo', 'cbError'), show_alert: true });
         }
     }
     else if (data === 'plate_manual') {
         const pending = pendingManualInput.get(from.id);
         if (!pending) {
-            await ctx.answerCallbackQuery('⚠️ Geçersiz işlem.');
+            await ctx.answerCallbackQuery(t(lang, 'photo', 'cbTimeout'));
             return;
         }
         await ctx.answerCallbackQuery();
-        await ctx.editMessageText('ℹ️ Lütfen plaka numarasını aşağıya manuel olarak yazın.');
+        await ctx.editMessageText(t(lang, 'photo', 'cbManualPrompt'));
     }
 }
 
 /**
  * Timeout callback factory
  */
-function createTimeoutCallback(ctx) {
+function createTimeoutCallback(ctx, lang) {
     return async (session) => {
         try {
             await ctx.api.sendMessage(
                 ctx.chat.id,
-                `⏰ *Oturum otomatik kapandı*\n\n` +
-                `🚛 Plaka: \`${session.plateNumber}\`\n` +
-                `📸 Fotoğraf: ${session.photoCount} adet\n\n` +
-                `📸 Yeni plaka fotoğrafı göndererek başka bir oturum başlatabilirsin.`,
+                t(lang, 'session', 'timeoutMsg', session.plateNumber, session.photoCount),
                 { parse_mode: 'Markdown' }
             );
         } catch (err) {

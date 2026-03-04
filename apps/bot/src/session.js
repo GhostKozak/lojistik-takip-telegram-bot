@@ -226,9 +226,9 @@ export async function recoverOpenSessions(onTimeout) {
  * Timeout süresini insan-okunur formatta döndür
  * @returns {string}
  */
-export function getTimeoutDuration() {
+export function getTimeoutDuration(lang = 'tr') {
     const minutes = Math.round(SESSION_TIMEOUT_MS / 60000);
-    return `${minutes} dakika`;
+    return lang === 'en' ? `${minutes} minutes` : `${minutes} dakika`;
 }
 
 /**

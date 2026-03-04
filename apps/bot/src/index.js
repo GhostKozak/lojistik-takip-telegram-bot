@@ -11,6 +11,7 @@ import { handleDone } from './handlers/done.js';
 import { handleStatus } from './handlers/status.js';
 import { handlePhoto, handleManualPlateInput, handleCallbackQuery } from './handlers/photo.js';
 import { recoverOpenSessions } from './session.js';
+import { getLang, t } from './i18n.js';
 
 // =============================================
 // Bot Token Kontrolü
@@ -77,9 +78,11 @@ bot.on('message:photo', handlePhoto);
 // Metin Mesajları (Manuel plaka girişi + bilinmeyen)
 // =============================================
 bot.on('message:text', async (ctx) => {
+    const lang = getLang(ctx);
+
     // Komutları atla (zaten yukarıda handle ediliyor)
     if (ctx.message.text.startsWith('/')) {
-        await ctx.reply('❓ Bilinmeyen komut. /yardim yazarak komut listesini görebilirsin.');
+        await ctx.reply(t(lang, 'index', 'unknownCommand'));
         return;
     }
 
@@ -88,10 +91,7 @@ bot.on('message:text', async (ctx) => {
     if (handled) return;
 
     // Bilinmeyen metin
-    await ctx.reply(
-        '🤔 Anlamadım. Komutlar için /yardim yaz.\n\n' +
-        '📸 Fotoğraf göndererek başlayabilirsin!'
-    );
+    await ctx.reply(t(lang, 'index', 'unknownText'));
 });
 
 // =============================================
@@ -104,16 +104,17 @@ bot.on('callback_query', handleCallbackQuery);
 // =============================================
 bot.on('inline_query', async (ctx) => {
     const query = ctx.inlineQuery.query.trim();
+    const lang = getLang(ctx);
 
     // Query boş olsa bile sonuç dön ki "yükleniyor" (spinner) takılı kalmasın
     const results = [
         {
             type: 'article',
             id: 'send_plate',
-            title: query ? `🚀 Plakayı Gönder: ${query.toUpperCase()}` : '✏️ Plakayı buraya yazın...',
+            title: query ? t(lang, 'index', 'sendPlatePrompt', query.toUpperCase()) : t(lang, 'index', 'writePlatePrompt'),
             description: query
-                ? 'Düzenlediğiniz bu plakayı onaylamak için buraya dokunun.'
-                : 'Botun okuduğu plakadaki hatayı düzeltip bu kutucuğa tıklayın.',
+                ? t(lang, 'index', 'editDesc')
+                : t(lang, 'index', 'fixDesc'),
             input_message_content: {
                 message_text: query || 'Hatalı işlem',
             },
@@ -122,7 +123,7 @@ bot.on('inline_query', async (ctx) => {
 
     // Eğer query boşsa, gönder butonunu etkisiz kılalım (çarpı yerine rehberlik etsin)
     if (!query) {
-        results[0].input_message_content.message_text = "Lütfen bir plaka yazın.";
+        results[0].input_message_content.message_text = t(lang, 'index', 'emptyQuery');
     }
 
     await ctx.answerInlineQuery(results, {
@@ -149,7 +150,7 @@ bot.catch((err) => {
     }
 
     // Kullanıcıya hata bildirimi
-    ctx.reply('⚠️ Bir hata oluştu. Lütfen tekrar dene.').catch(() => { });
+    ctx.reply(t(getLang(ctx), 'index', 'errorOccurred')).catch(() => { });
 });
 
 // =============================================
@@ -170,11 +171,11 @@ async function startBot() {
 
         // Açık session'ları yükle (restart recovery)
         await recoverOpenSessions((telegramId, session) => {
+            // Dil bilgisine sahip değiliz burada doğrudan (çünkü context yok).
+            // Normalde db'den de language okuyabiliriz. Basitlik adına TR fallback.
             bot.api.sendMessage(
                 telegramId,
-                `⏰ *Oturum otomatik kapandı*\n\n` +
-                `🚛 Plaka: \`${session.plateNumber}\`\n` +
-                `📸 Fotoğraf: ${session.photoCount} adet`,
+                t('tr', 'index', 'restartTimeoutMsg', session.plateNumber, session.photoCount),
                 { parse_mode: 'Markdown' }
             ).catch(() => { });
         });

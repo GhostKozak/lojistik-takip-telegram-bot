@@ -3,6 +3,7 @@
  */
 
 import { getActiveSession, forceCloseSession } from '../session.js';
+import { getLang, t } from '../i18n.js';
 
 /**
  * /done komut handler'ı
@@ -12,14 +13,13 @@ export async function handleDone(ctx) {
     const telegramId = ctx.from?.id;
     if (!telegramId) return;
 
+    const lang = getLang(ctx);
+
     try {
         const session = getActiveSession(telegramId);
 
         if (!session) {
-            await ctx.reply(
-                '📭 Aktif bir oturumun yok.\n\n' +
-                '📸 Plaka fotoğrafı göndererek yeni oturum başlatabilirsin.'
-            );
+            await ctx.reply(t(lang, 'done', 'noSession'));
             return;
         }
 
@@ -31,17 +31,13 @@ export async function handleDone(ctx) {
         const seconds = duration % 60;
 
         await ctx.reply(
-            `✅ *Oturum kapatıldı*\n\n` +
-            `🚛 Plaka: \`${closed.plateNumber}\`\n` +
-            `📸 Fotoğraf: ${closed.photoCount} adet\n` +
-            `⏱ Süre: ${minutes > 0 ? `${minutes}dk ` : ''}${seconds}sn\n\n` +
-            `📸 Yeni plaka fotoğrafı göndererek başka bir oturum başlatabilirsin.`,
+            t(lang, 'done', 'sessionClosed', closed.plateNumber, closed.photoCount, minutes, seconds),
             { parse_mode: 'Markdown' }
         );
 
         console.log(`[DONE] ${ctx.from.first_name} → ${closed.plateNumber} (${closed.photoCount} fotoğraf)`);
     } catch (err) {
         console.error('[DONE] Hata:', err.message);
-        await ctx.reply('❌ Oturum kapatılırken hata oluştu.');
+        await ctx.reply(t(lang, 'errors', 'errorDone'));
     }
 }
