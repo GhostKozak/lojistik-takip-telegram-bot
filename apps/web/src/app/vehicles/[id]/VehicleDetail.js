@@ -2,10 +2,12 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
+import JSZip from 'jszip';
 import styles from './VehicleDetail.module.css';
 
 export default function VehicleDetail({ session, photos }) {
     const [lightboxIndex, setLightboxIndex] = useState(null);
+    const [downloading, setDownloading] = useState(false);
 
     const userName = session.field_users?.full_name || 'Bilinmeyen';
 
@@ -29,6 +31,54 @@ export default function VehicleDetail({ session, photos }) {
         if (e.key === 'ArrowRight') nextPhoto();
     }, [photos.length]);
 
+    // Bulk Download
+    const downloadAll = async () => {
+        if (photos.length === 0 || downloading) return;
+        setDownloading(true);
+
+        try {
+            const zip = new JSZip();
+            const folder = zip.folder(`Lojistik_${session.plate_number.replace(/\s+/g, '_')}`);
+
+            // Tüm fotoğrafları indir
+            const downloadPromises = photos.map(async (photo, index) => {
+                if (photo.public_url.startsWith('pending/')) return;
+
+                try {
+                    const response = await fetch(photo.public_url);
+                    const blob = await response.blob();
+
+                    // Dosya ismini oluştur (index + tarih)
+                    const date = new Date(photo.uploaded_at).toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                    const fileName = `${index + 1}_${date}.jpg`;
+
+                    folder.file(fileName, blob);
+                } catch (err) {
+                    console.error('Fotoğraf indirme hatası:', err);
+                }
+            });
+
+            await Promise.all(downloadPromises);
+
+            const content = await zip.generateAsync({ type: 'blob' });
+
+            // Link oluştur ve indir
+            const url = window.URL.createObjectURL(content);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${session.plate_number.replace(/\s+/g, '_')}_fotograflar.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            alert('ZIP oluşturulurken hata oluştu.');
+            console.error(err);
+        } finally {
+            setDownloading(false);
+        }
+    };
+
     return (
         <div className={styles.container}>
             {/* Back button */}
@@ -44,6 +94,15 @@ export default function VehicleDetail({ session, photos }) {
                         <span className={styles.statusDot}></span>
                         {session.status === 'open' ? 'Açık Oturum' : 'Kapalı Oturum'}
                     </span>
+                </div>
+                <div className={styles.actions}>
+                    <button
+                        className={styles.bulkDownloadBtn}
+                        onClick={downloadAll}
+                        disabled={downloading || photos.length === 0}
+                    >
+                        {downloading ? '📦 ZIP Hazırlanıyor...' : '🗂️ Tümünü İndir (ZIP)'}
+                    </button>
                 </div>
             </div>
 

@@ -96,6 +96,58 @@
     }
 }
 
+/* Actions */
+.actions {
+    display: flex;
+    gap: 12px;
+}
+
+.bulkDownloadBtn {
+    background: var(--bg-card);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.bulkDownloadBtn:hover:not(:disabled) {
+    border-color: var(--accent-primary);
+    background: var(--bg-card-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+}
+
+.bulkDownloadBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .actions {
+        width: 100%;
+    }
+
+    .bulkDownloadBtn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
 /* Info Grid */
 .infoGrid {
     display: grid;

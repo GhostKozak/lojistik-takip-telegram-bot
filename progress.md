@@ -177,15 +177,14 @@ git add . && git commit -m "feat(web): scaffold next.js dashboard"
 
 - [x] **Gerçek Zamanlı Güncelleme** — Yeni kayıtlar anında (Realtime Toast) ✅
 - [x] **Tarih Filtresi** — GTE/LTE bazlı premium tarih seçici ✅
-- [x] **Pagination / Infinite Scroll** — "Daha Fazla Yükle" sistemi ve 12'li grid optimizasyonu ✅
-- [ ] **Toplu İndirme** — Oturuma ait tüm fotoğrafları ZIP olarak indir
-- [ ] **Grafikler** — Günlük aktivite trendi (Chart.js / Recharts)
+- [x] **Pagination / Infinite Scroll** — "Daha Fazla Yükle" sistemi ✅
+- [x] **Toplu İndirme** — Oturuma ait tüm fotoğrafları ZIP olarak indir (JSZip) ✅
 
 **Not:** Realtime özelliğini aktif etmek için `supabase/migrations/002_enable_realtime.sql` dosyasındaki komutların Supabase SQL Editor'da çalıştırılması gerekmektedir.
 
 **Git Checkpoint:**
 ```bash
-git add . && git commit -m "feat(web): add pagination/load more functionality"
+git add . && git commit -m "feat(web): add bulk photo download (ZIP) functionality"
 ```
 
 ---
