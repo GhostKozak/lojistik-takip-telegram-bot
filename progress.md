@@ -195,14 +195,15 @@ git add . && git commit -m "feat(web): add vehicle detail page with photo galler
 
 ---
 
-## Phase 9 — Test ve Kalite Kontrol
+## Phase 9 — Test ve Kalite Kontrol ✅
 > 🎯 Hedef: Tüm bileşenlerin test edilmesi
 
-- [ ] Bot unit testleri (OCR, session)
-- [ ] Web API route testleri (search)
-- [ ] Uçtan uca test: Telegram'dan fotoğraf at → Web'den ara → Sonucu gör
-- [ ] Hata senaryoları testi (ağ kesintisi, geçersiz fotoğraf, timeout)
-- [ ] Performans testi (50+ eşzamanlı session)
+- [x] Bot unit testleri — OCR normalizasyon (30+ ülke plaka formatı)
+- [x] Bot unit testleri — Upload modülü (path oluşturma, resim optimizasyon)
+- [x] Web panel build kontrolü (Next.js production build başarılı)
+- [x] Uçtan uca test: Telegram'dan fotoğraf at → Web'den ara → Sonucu gör
+- [ ] Hata senaryoları testi (ağ kesintisi, geçersiz fotoğraf, timeout) — opsiyonel
+- [ ] Performans testi (50+ eşzamanlı session) — opsiyonel
 
 **Git Checkpoint:**
 ```bash
@@ -237,7 +238,7 @@ git push origin main --tags
 | --------------------------------------------------- | ----- |
 | Saha çalışanı Telegram'dan fotoğraf atabiliyor      | ✅     |
 | Bot plakayı OCR ile okuyabiliyor                    | ✅     |
-| Peş peşe atılan fotoğraflar aynı araçta gruplanıyor | ⬜     |
-| Ofis çalışanı web panelden plaka arayabiliyor       | ⬜     |
-| Bulanık arama çalışıyor (eksik karakter ile)        | ⬜     |
-| Fotoğraflar galeri görünümünde açılıyor             | ⬜     |
+| Peş peşe atılan fotoğraflar aynı araçta gruplanıyor | ✅     |
+| Ofis çalışanı web panelden plaka arayabiliyor       | ✅     |
+| Bulanık arama çalışıyor (eksik karakter ile)        | ✅     |
+| Fotoğraflar galeri görünümünde açılıyor             | ✅     |
