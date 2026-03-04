@@ -148,6 +148,50 @@
     }
 }
 
+/* Notes Section */
+.notesSection {
+    margin-bottom: 40px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    backdrop-filter: blur(12px);
+}
+
+.sectionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.saveIndicator {
+    font-size: 0.75rem;
+    color: var(--accent-primary-light);
+    font-weight: 500;
+}
+
+.notesTextarea {
+    width: 100%;
+    min-height: 120px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    padding: 16px;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    transition: all var(--transition-base);
+}
+
+.notesTextarea:focus {
+    border-color: var(--border-accent);
+    background: rgba(255, 255, 255, 0.08);
+}
+
 /* Info Grid */
 .infoGrid {
     display: grid;

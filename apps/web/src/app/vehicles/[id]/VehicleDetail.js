@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import JSZip from 'jszip';
+import { supabase } from '@/lib/supabase';
 import styles from './VehicleDetail.module.css';
 
 export default function VehicleDetail({ session, photos }) {
     const [lightboxIndex, setLightboxIndex] = useState(null);
     const [downloading, setDownloading] = useState(false);
+    const [notes, setNotes] = useState(session.notes || '');
+    const [isSaving, setIsSaving] = useState(false);
 
     const userName = session.field_users?.full_name || 'Bilinmeyen';
 
@@ -30,6 +33,29 @@ export default function VehicleDetail({ session, photos }) {
         if (e.key === 'ArrowLeft') prevPhoto();
         if (e.key === 'ArrowRight') nextPhoto();
     }, [photos.length]);
+
+    // Save Notes (Debounced)
+    useEffect(() => {
+        if (notes === (session.notes || '')) return;
+
+        const timer = setTimeout(async () => {
+            setIsSaving(true);
+            try {
+                const { error } = await supabase
+                    .from('vehicle_sessions')
+                    .update({ notes: notes.trim() })
+                    .eq('id', session.id);
+
+                if (error) throw error;
+            } catch (err) {
+                console.error('Not kaydetme hatası:', err);
+            } finally {
+                setIsSaving(false);
+            }
+        }, 1000);
+
+        return () => clearTimeout(timer);
+    }, [notes, session.id, session.notes]);
 
     // Bulk Download
     const downloadAll = async () => {
@@ -156,6 +182,20 @@ export default function VehicleDetail({ session, photos }) {
                         </div>
                     </div>
                 )}
+            </div>
+
+            {/* Notes Section */}
+            <div className={styles.notesSection}>
+                <div className={styles.sectionHeader}>
+                    <h2 className={styles.galleryTitle}>📝 Notlar / Açıklama</h2>
+                    {isSaving && <span className={styles.saveIndicator}>🔄 Kaydediliyor...</span>}
+                </div>
+                <textarea
+                    className={styles.notesTextarea}
+                    placeholder="Bu oturum hakkında not girin... (Otomatik kaydedilir)"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                />
             </div>
 
             {/* Photo Gallery */}

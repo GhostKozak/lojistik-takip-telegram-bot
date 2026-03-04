@@ -16,6 +16,7 @@ export default function Dashboard({ initialStats, initialSessions }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
+    const [dateMode, setDateMode] = useState('range'); // 'range' or 'single'
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [page, setPage] = useState(1);
@@ -56,9 +57,14 @@ export default function Dashboard({ initialStats, initialSessions }) {
             }
 
             if (dateRange.start) {
-                query = query.gte('opened_at', `${dateRange.start}T00:00:00`);
+                if (dateMode === 'single') {
+                    query = query.gte('opened_at', `${dateRange.start}T00:00:00`)
+                        .lte('opened_at', `${dateRange.start}T23:59:59`);
+                } else {
+                    query = query.gte('opened_at', `${dateRange.start}T00:00:00`);
+                }
             }
-            if (dateRange.end) {
+            if (dateMode === 'range' && dateRange.end) {
                 query = query.lte('opened_at', `${dateRange.end}T23:59:59`);
             }
 
@@ -105,9 +111,14 @@ export default function Dashboard({ initialStats, initialSessions }) {
             }
 
             if (dateRange.start) {
-                query = query.gte('opened_at', `${dateRange.start}T00:00:00`);
+                if (dateMode === 'single') {
+                    query = query.gte('opened_at', `${dateRange.start}T00:00:00`)
+                        .lte('opened_at', `${dateRange.start}T23:59:59`);
+                } else {
+                    query = query.gte('opened_at', `${dateRange.start}T00:00:00`);
+                }
             }
-            if (dateRange.end) {
+            if (dateMode === 'range' && dateRange.end) {
                 query = query.lte('opened_at', `${dateRange.end}T23:59:59`);
             }
 
@@ -144,7 +155,7 @@ export default function Dashboard({ initialStats, initialSessions }) {
         }, searchQuery.trim() ? 300 : 0);
 
         return () => clearTimeout(timer);
-    }, [searchQuery, statusFilter, dateRange, initialSessions, initialStats, refreshData]);
+    }, [searchQuery, statusFilter, dateRange, dateMode, initialSessions, initialStats, refreshData]);
 
     // ---- Realtime Subscription ----
     useEffect(() => {
@@ -235,8 +246,16 @@ export default function Dashboard({ initialStats, initialSessions }) {
                         />
                     </div>
                     <div className="date-filters">
+                        <button
+                            className={`date-mode-toggle ${dateMode === 'single' ? 'active' : ''}`}
+                            onClick={() => setDateMode(prev => prev === 'range' ? 'single' : 'range')}
+                            title={dateMode === 'range' ? 'Tek güne geç' : 'Aralığa geç'}
+                        >
+                            {dateMode === 'range' ? '📅 Aralık' : '📌 Tek Gün'}
+                        </button>
+
                         <div className="date-input-group">
-                            <label htmlFor="date-start">Başlangıç:</label>
+                            <label htmlFor="date-start">{dateMode === 'range' ? 'Başlangıç:' : 'Tarih:'}</label>
                             <input
                                 type="date"
                                 id="date-start"
@@ -245,16 +264,20 @@ export default function Dashboard({ initialStats, initialSessions }) {
                                 onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
                             />
                         </div>
-                        <div className="date-input-group">
-                            <label htmlFor="date-end">Bitiş:</label>
-                            <input
-                                type="date"
-                                id="date-end"
-                                className="date-input"
-                                value={dateRange.end}
-                                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                            />
-                        </div>
+
+                        {dateMode === 'range' && (
+                            <div className="date-input-group">
+                                <label htmlFor="date-end">Bitiş:</label>
+                                <input
+                                    type="date"
+                                    id="date-end"
+                                    className="date-input"
+                                    value={dateRange.end}
+                                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                                />
+                            </div>
+                        )}
+
                         {(dateRange.start || dateRange.end) && (
                             <button
                                 className="clear-date-btn"
