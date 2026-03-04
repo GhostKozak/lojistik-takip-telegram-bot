@@ -40,7 +40,7 @@ export default async function HomePage() {
       .from('vehicle_sessions')
       .select('*, field_users(full_name, username), photos(count)')
       .order('opened_at', { ascending: false })
-      .limit(20);
+      .limit(12);
 
     recentSessions = data ?? [];
   } catch (err) {

@@ -167,13 +167,25 @@ git add . && git commit -m "feat(web): scaffold next.js dashboard"
 - [x] Supabase `ilike` sorgusu ile arama
 - [x] Araç kartları (plaka, durum, kullanıcı, fotoğraf sayısı, tarih, OCR güven)
 - [x] StatusBadge — Açık/Kapalı session göstergesi (animasyonlu)
+- [x] **Durum Filtresi** — Tümü / Açık / Kapalı sekmeleri ✅
 - [x] Sonuçları grid layout ile göster
 - [x] Boş durum (empty state) tasarımı
 - [x] Yüklenme (loading) skeleton'ları
 
+## Phase 11 — Gelişmiş Özellikler (Devam Ediyor) 🚀
+> 🎯 Hedef: Kullanıcı deneyimini premium seviyeye çıkarma
+
+- [x] **Gerçek Zamanlı Güncelleme** — Yeni kayıtlar anında (Realtime Toast) ✅
+- [x] **Tarih Filtresi** — GTE/LTE bazlı premium tarih seçici ✅
+- [x] **Pagination / Infinite Scroll** — "Daha Fazla Yükle" sistemi ve 12'li grid optimizasyonu ✅
+- [ ] **Toplu İndirme** — Oturuma ait tüm fotoğrafları ZIP olarak indir
+- [ ] **Grafikler** — Günlük aktivite trendi (Chart.js / Recharts)
+
+**Not:** Realtime özelliğini aktif etmek için `supabase/migrations/002_enable_realtime.sql` dosyasındaki komutların Supabase SQL Editor'da çalıştırılması gerekmektedir.
+
 **Git Checkpoint:**
 ```bash
-git add . && git commit -m "feat(web): add fuzzy search and vehicle cards"
+git add . && git commit -m "feat(web): add pagination/load more functionality"
 ```
 
 ---

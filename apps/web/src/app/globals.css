@@ -262,8 +262,17 @@ a:hover {
     margin-bottom: 32px;
 }
 
+.search-row {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
 .search-wrapper {
     position: relative;
+    flex: 1;
+    min-width: 300px;
     max-width: 600px;
 }
 
@@ -301,13 +310,238 @@ a:hover {
     background: rgba(255, 255, 255, 0.06);
 }
 
-.search-input:focus ~ .search-icon {
+.search-input:focus~.search-icon {
     color: var(--accent-primary-light);
 }
 
 /* =============================================
-   Vehicle Cards Grid
+   Date Filters (Premium Styling)
    ============================================= */
+.date-filters {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    padding: 8px 24px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-base);
+}
+
+.date-filters:hover {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-md);
+}
+
+.date-filters:focus-within {
+    border-color: var(--border-accent);
+    box-shadow: var(--shadow-glow);
+}
+
+.date-input-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+}
+
+.date-input-group label {
+    font-size: 0.65rem;
+    color: var(--text-accent);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+}
+
+.date-input {
+    background: var(--bg-input);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 500;
+    outline: none;
+    transition: all var(--transition-fast);
+    cursor: pointer;
+}
+
+.date-input:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.date-input:focus {
+    border-color: var(--accent-primary);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Chrome/Safari Dark Date Picker Improvements */
+.date-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.8) sepia(100%) saturate(200%) hue-rotate(190deg);
+    /* Violet/Blueish tint */
+    opacity: 0.5;
+    cursor: pointer;
+    transition: opacity var(--transition-fast), filter var(--transition-fast);
+}
+
+.date-input:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
+    filter: invert(1);
+}
+
+.clear-date-btn {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: var(--accent-danger);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all var(--transition-fast);
+    margin-left: 4px;
+}
+
+.clear-date-btn:hover {
+    background: var(--accent-danger);
+    color: white;
+    transform: rotate(90deg);
+}
+
+/* Responsive adjustments for search row */
+@media (max-width: 1100px) {
+    .search-row {
+        gap: 16px;
+    }
+
+    .date-filters {
+        flex: 1;
+        justify-content: space-between;
+        min-width: 450px;
+    }
+}
+
+@media (max-width: 768px) {
+    .date-filters {
+        min-width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        padding: 16px;
+        gap: 16px;
+    }
+
+    .date-input-group {
+        justify-content: space-between;
+    }
+
+    .date-input {
+        width: 160px;
+    }
+}
+
+
+/* =============================================
+   Filter Tabs
+   ============================================= */
+.filter-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.filter-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-glass);
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.filter-tab:hover {
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+    background: var(--bg-input);
+}
+
+.filter-tab.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary-light);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.1);
+}
+
+/* =============================================
+   Realtime Toast
+   ============================================= */
+.realtime-toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: rgba(99, 102, 241, 0.2);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--accent-primary);
+    padding: 12px 20px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+    animation: toast-in 400ms cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 2000;
+}
+
+.toast-icon {
+    font-size: 1.2rem;
+    animation: toast-sparkle 1s ease-in-out infinite;
+}
+
+.toast-text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes toast-sparkle {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.6;
+        transform: scale(1.1);
+    }
+}
+
 .vehicles-section {
     margin-bottom: 48px;
 }
@@ -422,8 +656,15 @@ a:hover {
 }
 
 @keyframes pulse-dot {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
 }
 
 .vehicle-card-meta {
@@ -484,20 +725,23 @@ a:hover {
    Loading Skeletons
    ============================================= */
 .skeleton {
-    background: linear-gradient(
-        90deg,
-        var(--bg-glass) 0%,
-        rgba(255, 255, 255, 0.06) 50%,
-        var(--bg-glass) 100%
-    );
+    background: linear-gradient(90deg,
+            var(--bg-glass) 0%,
+            rgba(255, 255, 255, 0.06) 50%,
+            var(--bg-glass) 100%);
     background-size: 200% 100%;
     animation: skeleton-shimmer 1.5s ease-in-out infinite;
     border-radius: var(--radius-sm);
 }
 
 @keyframes skeleton-shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 .skeleton-text {
@@ -565,6 +809,63 @@ a:hover {
 
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(148, 163, 184, 0.3);
+}
+
+/* =============================================
+   Load More
+   ============================================= */
+.load-more-section {
+    display: flex;
+    justify-content: center;
+    margin: 48px 0;
+}
+
+.load-more-btn {
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 12px 32px;
+    border-radius: var(--radius-lg);
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.load-more-btn:hover:not(:disabled) {
+    border-color: var(--border-accent);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+    background: var(--bg-card-hover);
+}
+
+.load-more-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.load-more-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.load-more-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--accent-primary-light);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* =============================================
