@@ -1,6 +1,6 @@
 # 📋 Proje İlerleme Takibi — Lojistik Fotoğraf Yönetim Sistemi
 
-> Son güncelleme: 2026-03-03
+> Son güncelleme: 2026-03-04
 
 ---
 
@@ -118,15 +118,18 @@ git add . && git commit -m "feat(bot): implement session-based photo grouping"
 
 ---
 
-## Phase 5 — Dosya Yükleme Pipeline
+## Phase 5 — Dosya Yükleme Pipeline ✅
 > 🎯 Hedef: Telegram fotoğraflarının Supabase Storage'a aktarılması
 
-- [ ] Telegram file download → Buffer dönüşümü
-- [ ] Supabase Storage'a upload fonksiyonu
-- [ ] Dosya isimlendirme: `{plate}/{timestamp}_{type}.jpg`
-- [ ] Public URL oluşturma
-- [ ] Upload hatalarında retry mekanizması
-- [ ] Dosya boyutu limiti kontrolü
+- [x] Telegram file download → Buffer dönüşümü
+- [x] Supabase Storage'a upload fonksiyonu
+- [x] Dosya isimlendirme: `{plate}/{timestamp}_{type}.jpg`
+- [x] Public URL oluşturma
+- [x] Upload hatalarında retry mekanizması (exponential backoff)
+- [x] Dosya boyutu limiti kontrolü (10MB)
+- [x] Sharp ile resim optimizasyonu (JPEG, max 1920px)
+- [x] `src/upload.js` — Merkezi upload modülü
+- [x] `src/handlers/photo.js` — 3 noktada upload entegrasyonu
 
 **Git Checkpoint:**
 ```bash

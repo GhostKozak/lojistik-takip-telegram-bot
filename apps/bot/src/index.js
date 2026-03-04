@@ -9,7 +9,7 @@ import { handleStart } from './handlers/start.js';
 import { handleHelp } from './handlers/help.js';
 import { handleDone } from './handlers/done.js';
 import { handleStatus } from './handlers/status.js';
-import { handlePhoto, handleManualPlateInput } from './handlers/photo.js';
+import { handlePhoto, handleManualPlateInput, handleCallbackQuery } from './handlers/photo.js';
 import { recoverOpenSessions } from './session.js';
 
 // =============================================
@@ -92,6 +92,43 @@ bot.on('message:text', async (ctx) => {
         '🤔 Anlamadım. Komutlar için /yardim yaz.\n\n' +
         '📸 Fotoğraf göndererek başlayabilirsin!'
     );
+});
+
+// =============================================
+// Buton Tıklamaları (Inline Buttons)
+// =============================================
+bot.on('callback_query', handleCallbackQuery);
+
+// =============================================
+// Inline Sorgular (Düzenle Butonu İçin)
+// =============================================
+bot.on('inline_query', async (ctx) => {
+    const query = ctx.inlineQuery.query.trim();
+
+    // Query boş olsa bile sonuç dön ki "yükleniyor" (spinner) takılı kalmasın
+    const results = [
+        {
+            type: 'article',
+            id: 'send_plate',
+            title: query ? `🚀 Plakayı Gönder: ${query.toUpperCase()}` : '✏️ Plakayı buraya yazın...',
+            description: query
+                ? 'Düzenlediğiniz bu plakayı onaylamak için buraya dokunun.'
+                : 'Botun okuduğu plakadaki hatayı düzeltip bu kutucuğa tıklayın.',
+            input_message_content: {
+                message_text: query || 'Hatalı işlem',
+            },
+        }
+    ];
+
+    // Eğer query boşsa, gönder butonunu etkisiz kılalım (çarpı yerine rehberlik etsin)
+    if (!query) {
+        results[0].input_message_content.message_text = "Lütfen bir plaka yazın.";
+    }
+
+    await ctx.answerInlineQuery(results, {
+        cache_time: 0,
+        is_personal: true
+    });
 });
 
 // =============================================

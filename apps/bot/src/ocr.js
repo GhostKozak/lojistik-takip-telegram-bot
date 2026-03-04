@@ -116,8 +116,12 @@ export async function recognizePlate(imageBuffer) {
 }
 
 /**
- * Cleanup - PlateRecognizer API'de stateless
+ * Plaka metnini temizler ve standart formata getirir
+ * @param {string} plate 
+ * @returns {string} Cleaned plate
  */
-export async function terminateWorker() {
-    // No worker to terminate for Cloud API
+export function normalizePlate(plate) {
+    if (!plate) return '';
+    // Büyük harf yap ve sadece sayı/harfleri tut
+    return plate.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 }

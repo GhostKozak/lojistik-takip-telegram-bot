@@ -11,7 +11,8 @@
  */
 
 import { getUserByTelegramId, upsertUser, addPhoto } from '../db.js';
-import { recognizePlate } from '../ocr.js';
+import { recognizePlate, normalizePlate } from '../ocr.js';
+import { uploadPhotoFromTelegram } from '../upload.js';
 import {
     getActiveSession,
     openSession,
@@ -19,6 +20,7 @@ import {
     incrementPhotoCount,
     getTimeoutDuration,
 } from '../session.js';
+import { InlineKeyboard } from 'grammy';
 
 // Manuel plaka girişi bekleyen kullanıcılar
 // Key: telegramId, Value: { fileId, timestamp }
@@ -68,11 +70,29 @@ export async function handlePhoto(ctx) {
  * Açık session'a fotoğraf ekle
  */
 async function addPhotoToSession(ctx, session, fileId, user) {
-    // Fotoğrafı DB'ye kaydet (Phase 5'te storage upload eklenecek)
+    // Fotoğrafı Supabase Storage'a yükle
+    let storagePath = `pending/${fileId}`;
+    let publicUrl = `pending/${fileId}`;
+
+    try {
+        const uploadResult = await uploadPhotoFromTelegram({
+            fileId,
+            botToken: process.env.TELEGRAM_BOT_TOKEN,
+            plateNumber: session.plateNumber,
+            photoType: 'unknown',
+        });
+        storagePath = uploadResult.storagePath;
+        publicUrl = uploadResult.publicUrl;
+    } catch (err) {
+        console.error(`[PHOTO] Upload hatası (session'a ekleme): ${err.message}`);
+        // Upload başarısız olsa da telegram_file_id ile devam et
+    }
+
+    // Fotoğrafı DB'ye kaydet
     await addPhoto({
         sessionId: session.sessionId,
-        storagePath: `pending/${fileId}`, // Phase 5'te gerçek path olacak
-        publicUrl: `pending/${fileId}`,   // Phase 5'te gerçek URL olacak
+        storagePath,
+        publicUrl,
         photoType: 'unknown',
         telegramFileId: fileId,
     });
@@ -81,7 +101,7 @@ async function addPhotoToSession(ctx, session, fileId, user) {
     incrementPhotoCount(ctx.from.id);
     resetSessionTimeout(ctx.from.id, createTimeoutCallback(ctx));
 
-    const count = session.photoCount + 1; // incrementPhotoCount henüz çağrıldı
+    const count = session.photoCount + 1;
 
     await ctx.reply(
         `📸 Fotoğraf eklendi! (${count}. fotoğraf)\n` +
@@ -116,27 +136,37 @@ async function processNewPlatePhoto(ctx, fileId, user) {
         } catch { /* ignore */ }
 
         // Fotoğrafı pending'e kaydet (session açılınca eklenecek)
+        // Buffer'ı saklıyoruz ki tekrar indirmek zorunda kalmayalım
         pendingManualInput.set(ctx.from.id, {
             fileId,
+            buffer,
             timestamp: Date.now(),
             ocrResult: result,
         });
 
         if (result.plate) {
-            // ---- OCR bir şey buldu — kullanıcıya doğrulama sor ----
+            // ---- OCR bir şey buldu — Butonlu doğrulama sor ----
+            const keyboard = new InlineKeyboard()
+                .text(`✅ Onayla: ${result.plate}`, `plate_ok:${result.plate}`)
+                .row()
+                .switchInlineCurrent(`✏️ Düzenle`, result.plate)
+                .text(`❌ İptal / Kendim Yazacağım`, `plate_manual`);
+
             await ctx.reply(
                 `🔍 *OCR Tahmini:* \`${result.plate}\`\n` +
                 `📊 Güven: ${Math.round(result.confidence * 100)}%\n\n` +
-                `✅ Doğruysa plakayı aynen yaz: \`${result.plate}\`\n` +
-                `✏️ Yanlışsa doğru plakayı yaz (örn: \`34 ABC 1234\`)`,
-                { parse_mode: 'Markdown' }
+                `Lütfen seçim yapın:`,
+                {
+                    parse_mode: 'Markdown',
+                    reply_markup: keyboard
+                }
             );
         } else {
             // ---- OCR başarısız — manuel giriş iste ----
             await ctx.reply(
                 `⚠️ *Plaka okunamadı*\n\n` +
                 `✏️ Lütfen plaka numarasını *elle yaz*\n` +
-                `Örnek: \`CB 4644 EB\` veya \`34 ABC 1234\``,
+                `Örnek: \`34 ABC 1234\``,
                 { parse_mode: 'Markdown' }
             );
         }
@@ -155,6 +185,7 @@ async function processNewPlatePhoto(ctx, fileId, user) {
 
         pendingManualInput.set(ctx.from.id, {
             fileId,
+            buffer: null, // OCR hatası — buffer yok, tekrar indirilecek
             timestamp: Date.now(),
         });
     }
@@ -193,7 +224,6 @@ export async function handleManualPlateInput(ctx) {
         if (!user) return false;
 
         // Normalize et
-        const { normalizePlate } = await import('../ocr.js');
         const normalizedPlate = normalizePlate(text);
 
         // Session aç
@@ -206,11 +236,28 @@ export async function handleManualPlateInput(ctx) {
             onTimeout: createTimeoutCallback(ctx),
         });
 
-        // Bekleyen fotoğrafı kaydet
+        // Bekleyen fotoğrafı Supabase Storage'a yükle ve kaydet
+        let storagePath = `pending/${pending.fileId}`;
+        let publicUrl = `pending/${pending.fileId}`;
+
+        try {
+            const uploadResult = await uploadPhotoFromTelegram({
+                fileId: pending.fileId,
+                botToken: process.env.TELEGRAM_BOT_TOKEN,
+                plateNumber: normalizedPlate,
+                photoType: 'plate',
+                buffer: pending.buffer || undefined,
+            });
+            storagePath = uploadResult.storagePath;
+            publicUrl = uploadResult.publicUrl;
+        } catch (err) {
+            console.error(`[PHOTO] Upload hatası (manuel): ${err.message}`);
+        }
+
         await addPhoto({
             sessionId: session.sessionId,
-            storagePath: `pending/${pending.fileId}`,
-            publicUrl: `pending/${pending.fileId}`,
+            storagePath,
+            publicUrl,
             photoType: 'plate',
             telegramFileId: pending.fileId,
         });
@@ -234,6 +281,93 @@ export async function handleManualPlateInput(ctx) {
         console.error('[PHOTO] Manuel giriş hatası:', err.message);
         await ctx.reply('❌ Plaka kaydedilirken hata oluştu. Tekrar dene.');
         return true;
+    }
+}
+
+/**
+ * Callback query handler (Buton tıklamaları)
+ * @param {import('grammy').Context} ctx
+ */
+export async function handleCallbackQuery(ctx) {
+    const data = ctx.callbackQuery.data;
+    const from = ctx.from;
+
+    if (data.startsWith('plate_ok:')) {
+        const plate = data.split(':')[1];
+        const pending = pendingManualInput.get(from.id);
+
+        if (!pending) {
+            await ctx.answerCallbackQuery({ text: '⚠️ Zaman aşımı veya geçersiz işlem.', show_alert: true });
+            return;
+        }
+
+        try {
+            await ctx.answerCallbackQuery();
+
+            // Mevcut mesajı güncelle (butonları kaldır)
+            await ctx.editMessageText(`✅ *Plaka onaylandı:* \`${plate}\``, { parse_mode: 'Markdown' });
+
+            // Session aç
+            const user = await getUserByTelegramId(from.id);
+            const normalizedPlate = normalizePlate(plate);
+
+            const session = await openSession({
+                telegramId: from.id,
+                userId: user.id,
+                plateNumber: normalizedPlate,
+                plateRaw: plate,
+                confidence: pending.ocrResult?.confidence || 0.8,
+                onTimeout: createTimeoutCallback(ctx),
+            });
+
+            // Fotoğrafı Supabase Storage'a yükle ve kaydet
+            let storagePath = `pending/${pending.fileId}`;
+            let publicUrl = `pending/${pending.fileId}`;
+
+            try {
+                const uploadResult = await uploadPhotoFromTelegram({
+                    fileId: pending.fileId,
+                    botToken: process.env.TELEGRAM_BOT_TOKEN,
+                    plateNumber: normalizedPlate,
+                    photoType: 'plate',
+                    buffer: pending.buffer || undefined,
+                });
+                storagePath = uploadResult.storagePath;
+                publicUrl = uploadResult.publicUrl;
+            } catch (err) {
+                console.error(`[CB] Upload hatası (onay): ${err.message}`);
+            }
+
+            await addPhoto({
+                sessionId: session.sessionId,
+                storagePath,
+                publicUrl,
+                photoType: 'plate',
+                telegramFileId: pending.fileId,
+            });
+            incrementPhotoCount(from.id);
+
+            pendingManualInput.delete(from.id);
+
+            await ctx.reply(
+                `✅ *Oturum Başlatıldı!*\n\n` +
+                `🚛 Plaka: \`${normalizedPlate}\`\n\n` +
+                `📸 Şimdi diğer fotoğrafları (konteyner, mühür vb.) gönderebilirsin.`,
+                { parse_mode: 'Markdown' }
+            );
+        } catch (err) {
+            console.error('[CB] Onay hatası:', err.message);
+            await ctx.answerCallbackQuery({ text: '❌ Bir hata oluştu.', show_alert: true });
+        }
+    }
+    else if (data === 'plate_manual') {
+        const pending = pendingManualInput.get(from.id);
+        if (!pending) {
+            await ctx.answerCallbackQuery('⚠️ Geçersiz işlem.');
+            return;
+        }
+        await ctx.answerCallbackQuery();
+        await ctx.editMessageText('ℹ️ Lütfen plaka numarasını aşağıya manuel olarak yazın.');
     }
 }
 
