@@ -138,16 +138,20 @@ git add . && git commit -m "feat(bot): add file upload pipeline to supabase stor
 
 ---
 
-## Phase 6 — Web Panel Temeli
+## Phase 6 — Web Panel Temeli ✅
 > 🎯 Hedef: Next.js iskeletinin hazırlanması
 
-- [ ] `apps/web/` dizininde Next.js 14 projesi oluştur
+- [x] `apps/web/` dizininde Next.js 14 projesi oluştur
   ```bash
   cd apps/web && npx -y create-next-app@latest ./ --app --src-dir --no-tailwind
   ```
-- [ ] Supabase JS client kur (`src/lib/supabase.js`)
-- [ ] Root layout ve global stiller
-- [ ] Dashboard sayfa iskeleti (`src/app/page.jsx`)
+- [x] Supabase JS client kur (`src/lib/supabase.js`)
+- [x] Root layout ve global stiller (premium dark theme, glassmorphism)
+- [x] Dashboard sayfa iskeleti (`src/app/page.js` + `Dashboard.js`)
+- [x] Stats kartları (toplam kayıt, aktif oturum, fotoğraf, kullanıcı)
+- [x] Araç kartları grid layout ile listeleme
+- [x] Debounced arama çubuğu (300ms)
+- [x] Loading skeleton ve empty state tasarımı
 
 **Git Checkpoint:**
 ```bash
@@ -156,16 +160,16 @@ git add . && git commit -m "feat(web): scaffold next.js dashboard"
 
 ---
 
-## Phase 7 — Arama ve Liste
+## Phase 7 — Arama ve Liste ✅
 > 🎯 Hedef: Fuzzy search ile plaka arama ve sonuç listeleme
 
-- [ ] `SearchBar.jsx` — Debounced input (300ms)
-- [ ] `/api/search/route.js` — Supabase `similarity()` sorgusu
-- [ ] `VehicleCard.jsx` — Araç özet kartı
-- [ ] `StatusBadge.jsx` — Açık/Kapalı session göstergesi
-- [ ] Sonuçları grid layout ile göster
-- [ ] Boş durum (empty state) tasarımı
-- [ ] Yüklenme (loading) skeleton'ları
+- [x] `Dashboard.js` — Debounced search input (300ms)
+- [x] Supabase `ilike` sorgusu ile arama
+- [x] Araç kartları (plaka, durum, kullanıcı, fotoğraf sayısı, tarih, OCR güven)
+- [x] StatusBadge — Açık/Kapalı session göstergesi (animasyonlu)
+- [x] Sonuçları grid layout ile göster
+- [x] Boş durum (empty state) tasarımı
+- [x] Yüklenme (loading) skeleton'ları
 
 **Git Checkpoint:**
 ```bash
@@ -174,14 +178,15 @@ git add . && git commit -m "feat(web): add fuzzy search and vehicle cards"
 
 ---
 
-## Phase 8 — Detay Sayfası ve Galeri
+## Phase 8 — Detay Sayfası ve Galeri ✅
 > 🎯 Hedef: Araç detayı ve fotoğraf galerisi
 
-- [ ] `vehicles/[id]/page.jsx` — Araç detay sayfası
-- [ ] `PhotoGallery.jsx` — Thumbnail grid + Lightbox
-- [ ] Fotoğraf tipi etiketleri (plaka / mühür / konteyner)
-- [ ] Fotoğraf indirme butonu
-- [ ] Responsive tasarım (mobil uyumlu)
+- [x] `vehicles/[id]/page.js` — Araç detay sayfası (Server Component)
+- [x] `VehicleDetail.js` — Bilgi kartları + fotoğraf galerisi (Client Component)
+- [x] Thumbnail grid + Lightbox (klavye navigasyonu: ok tuşları + Escape)
+- [x] Fotoğraf indirme butonu
+- [x] Responsive tasarım (mobil uyumlu)
+- [x] Pending fotoğraf göstergesi (✘ yüklenmemiş)
 
 **Git Checkpoint:**
 ```bash

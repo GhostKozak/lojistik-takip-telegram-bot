@@ -1,0 +1,426 @@
+/* =============================================
+   Vehicle Detail Page Styles
+   ============================================= */
+
+.container {
+    padding-bottom: 60px;
+}
+
+/* Back Link */
+.backLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 24px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.backLink:hover {
+    color: var(--accent-primary-light);
+    background: var(--bg-glass);
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.plate {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.statusDot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.open {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-success);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.open .statusDot {
+    animation: pulseDot 2s ease-in-out infinite;
+}
+
+.closed {
+    background: rgba(100, 116, 139, 0.15);
+    color: var(--text-muted);
+    border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+@keyframes pulseDot {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* Info Grid */
+.infoGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 36px;
+}
+
+.infoCard {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    transition: border-color var(--transition-fast);
+}
+
+.infoCard:hover {
+    border-color: var(--border-hover);
+}
+
+.infoIcon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.infoLabel {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.infoValue {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Gallery */
+.gallerySection {
+    margin-top: 8px;
+}
+
+.galleryTitle {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.photoGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+}
+
+.photoCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    position: relative;
+}
+
+.photoCard:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.photoThumb {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+    transition: transform var(--transition-slow);
+}
+
+.photoCard:hover .photoThumb {
+    transform: scale(1.05);
+}
+
+.pendingThumb {
+    width: 100%;
+    height: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-glass);
+    color: var(--text-muted);
+    font-size: 2rem;
+    gap: 8px;
+}
+
+.pendingThumb small {
+    font-size: 0.75rem;
+}
+
+.photoMeta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.photoIndex {
+    font-weight: 600;
+    color: var(--text-accent);
+}
+
+.photoTime {
+    color: var(--text-muted);
+}
+
+/* Empty Gallery */
+.emptyGallery {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-muted);
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--border-color);
+}
+
+.emptyIcon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+/* =============================================
+   Lightbox
+   ============================================= */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    backdrop-filter: blur(20px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 200ms ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.lightboxContent {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lightboxImage {
+    max-width: 90vw;
+    max-height: 82vh;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    animation: scaleIn 250ms ease-out;
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.lightboxClose {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    z-index: 1001;
+}
+
+.lightboxClose:hover {
+    background: rgba(239, 68, 68, 0.6);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.lightboxNav {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    z-index: 1001;
+    line-height: 1;
+}
+
+.lightboxNav:hover {
+    background: rgba(99, 102, 241, 0.5);
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.lightboxPrev {
+    left: 20px;
+}
+
+.lightboxNext {
+    right: 20px;
+}
+
+.lightboxInfo {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    padding: 10px 24px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 0.9rem;
+    z-index: 1001;
+}
+
+.downloadBtn {
+    color: var(--accent-primary-light);
+    font-weight: 600;
+    text-decoration: none;
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.downloadBtn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    color: white;
+}
+
+/* =============================================
+   Responsive
+   ============================================= */
+@media (max-width: 768px) {
+    .plate {
+        font-size: 1.5rem;
+    }
+
+    .headerLeft {
+        gap: 10px;
+    }
+
+    .infoGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .photoGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .lightboxNav {
+        width: 40px;
+        height: 40px;
+        font-size: 1.5rem;
+    }
+
+    .lightboxPrev {
+        left: 10px;
+    }
+
+    .lightboxNext {
+        right: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .infoGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .photoGrid {
+        grid-template-columns: 1fr;
+    }
+}
