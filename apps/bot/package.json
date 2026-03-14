@@ -7,7 +7,10 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node --test src/__tests__/*.test.js"
+    "test": "node --test src/__tests__/*.test.js",
+    "cleanup": "node scripts/cleanup-photos.js",
+    "cleanup:dry": "node scripts/cleanup-photos.js --dry-run",
+    "cleanup:schedule": "node scripts/cleanup-photos.js --schedule"
   },
   "keywords": [
     "telegram",
