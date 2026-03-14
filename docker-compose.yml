@@ -5,6 +5,10 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
     container_name: lojistik_web
     ports:
       - "3000:3000"
