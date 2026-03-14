@@ -6,7 +6,8 @@
  */
 
 import 'dotenv/config';
-import { Bot, GrammyError, HttpError } from 'grammy';
+import { Bot, GrammyError, HttpError, webhookCallback } from 'grammy';
+import express from 'express';
 import { conversations, createConversation } from '@grammyjs/conversations';
 import { handleStart } from './handlers/start.js';
 import { handleHelp } from './handlers/help.js';
@@ -167,16 +168,21 @@ bot.catch((err) => {
 // =============================================
 // Bot Başlatma
 // =============================================
+const isProd = process.env.NODE_ENV === 'production';
+let server = null; // For graceful shutdown in webhook mode
+let isShuttingDown = false;
+
 async function startBot() {
     try {
         // Bot bilgilerini al
         const me = await bot.api.getMe();
+        const modeText = isProd ? 'Webhook' : 'Long Polling';
 
         console.log('╔══════════════════════════════════════════════════╗');
         console.log(`║  🤖 Bot başlatıldı: @${me.username.padEnd(29)}║`);
         console.log(`║  📛 İsim: ${me.first_name.padEnd(37)}║`);
         console.log(`║  🆔 ID: ${String(me.id).padEnd(39)}║`);
-        console.log('║  📡 Mod: Long Polling                            ║');
+        console.log(`║  📡 Mod: ${modeText.padEnd(40)}║`);
         console.log('║  🔌 Plugin: conversations v2                     ║');
         console.log('╚══════════════════════════════════════════════════╝');
         console.log();
@@ -192,14 +198,41 @@ async function startBot() {
             ).catch(() => { });
         });
 
-        console.log('⏳ Mesaj bekleniyor... (Ctrl+C ile durdur)');
-        console.log();
+        if (isProd) {
+            // WEBHOOK MODU
+            const app = express();
+            app.use(express.json());
+            
+            // Güvenlik için token'ı path içine ekle
+            const webhookPath = `/webhook-${BOT_TOKEN}`;
+            app.use(webhookPath, webhookCallback(bot, 'express'));
 
-        // Long polling ile başlat
-        await bot.start({
-            onStart: () => { },
-            allowed_updates: ['message', 'callback_query'],
-        });
+            const PORT = process.env.PORT || 3000;
+            const WEBHOOK_URL = process.env.WEBHOOK_URL;
+
+            if (!WEBHOOK_URL) {
+                console.error('❌ PRODUCTION modunda çalışıyor ancak WEBHOOK_URL environment variable eksik!');
+                process.exit(1);
+            }
+
+            server = app.listen(PORT, async () => {
+                console.log(`🚀 Express server port ${PORT} üzerinden dinleniyor.`);
+                await bot.api.setWebhook(`${WEBHOOK_URL}${webhookPath}`, {
+                    allowed_updates: ['message', 'callback_query']
+                });
+                console.log(`🔗 Webhook aktifleştirildi: ${WEBHOOK_URL}${webhookPath}`);
+            });
+        } else {
+            // POLLING MODU
+            await bot.api.deleteWebhook(); // Eski webhook varsa kaldır
+            console.log('⏳ Mesaj bekleniyor... (Ctrl+C ile durdur)');
+            console.log();
+
+            await bot.start({
+                onStart: () => { },
+                allowed_updates: ['message', 'callback_query'],
+            });
+        }
     } catch (err) {
         console.error('❌ Bot başlatılamadı:', err.message);
 
@@ -212,19 +245,28 @@ async function startBot() {
 }
 
 // Graceful shutdown
-process.on('SIGINT', () => {
+async function shutdown() {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    
     console.log('\n👋 Bot kapatılıyor...');
     stopSessionSweep();
-    bot.stop();
-    process.exit(0);
-});
+    
+    try {
+        if (isProd) {
+            if (server) server.close(() => console.log('HTTP Sunucusu kapatıldı.'));
+        } else {
+            await bot.stop();
+        }
+    } catch (e) {
+        console.error('Kapatılırken bir hata oluştu:', e);
+    } finally {
+        process.exit(0);
+    }
+}
 
-process.on('SIGTERM', () => {
-    console.log('\n👋 Bot kapatılıyor...');
-    stopSessionSweep();
-    bot.stop();
-    process.exit(0);
-});
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);
 
 // Başlat!
 startBot();
