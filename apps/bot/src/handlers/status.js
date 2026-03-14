@@ -16,7 +16,7 @@ export async function handleStatus(ctx) {
     const lang = getLang(ctx);
 
     try {
-        const session = getActiveSession(telegramId);
+        const session = await getActiveSession(telegramId);
 
         if (!session) {
             await ctx.reply(t(lang, 'status', 'noSession'));

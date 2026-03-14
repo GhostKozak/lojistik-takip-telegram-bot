@@ -1,13 +1,17 @@
 /**
- * Fotoğraf Handler — OCR + Session Akışı
+ * Fotoğraf Handler — OCR + Session Akışı (Conversations + Offline Recovery)
  * 
  * Akış:
- *   1. Fotoğraf gelir → kullanıcı DB'de var mı kontrol et
- *   2. Açık session var mı?
- *      → Evet: fotoğrafı session'a ekle (Phase 5'te storage upload)
- *      → Hayır: OCR ile plaka oku
- *        → Başarılı: yeni session aç + fotoğrafı ekle
- *        → Başarısız: kullanıcıdan plakayı elle girmesini iste
+ *   1. Fotoğraf gelir → gecikme ölçülür (offline detection)
+ *   2. Açık session var mı? (gecikmeliyse mesaj zamanına göre kontrol)
+ *      → Evet: fotoğrafı session'a ekle
+ *      → Hayır + Gecikmeli: kapatılmış session'ı bul → yeniden aç → fotoğraf ekle
+ *      → Hayır + Normal: OCR ile plaka oku → onay/düzenleme
+ * 
+ * Offline Recovery:
+ *   Saha çalışanı çevrimdışıyken fotoğraf atar. İnternet gelince mesajlar
+ *   gecikmeli ulaşır (eski timestamp ile). Bu handler gecikmeyi tespit edip
+ *   fotoğrafları doğru session'a bağlar.
  */
 
 import { getUserByTelegramId, upsertUser, addPhoto } from '../db.js';
@@ -19,13 +23,38 @@ import {
     resetSessionTimeout,
     incrementPhotoCount,
     getTimeoutDuration,
+    getRecentClosedSession,
+    reopenClosedSession,
+    DELAY_THRESHOLD_MS,
 } from '../session.js';
 import { InlineKeyboard } from 'grammy';
 import { getLang, t } from '../i18n.js';
 
-// Manuel plaka girişi bekleyen kullanıcılar
-// Key: telegramId, Value: { fileId, timestamp }
-const pendingManualInput = new Map();
+/**
+ * Buton tıklaması ile fotoğraf arasında köprü kuran kısa ömürlü Map.
+ * Key: telegramId, Value: fileId
+ */
+const pendingFileIds = new Map();
+
+/**
+ * Mesaj gecikmesini hesapla
+ * @param {import('grammy').Context} ctx
+ * @returns {{ messageDate: Date, delayMs: number, isDelayed: boolean }}
+ */
+function measureDelay(ctx) {
+    // ctx.message.date = Unix timestamp (saniye cinsinden)
+    const messageDateMs = ctx.message.date * 1000;
+    const messageDate = new Date(messageDateMs);
+    const delayMs = Date.now() - messageDateMs;
+    const isDelayed = delayMs > DELAY_THRESHOLD_MS;
+
+    if (isDelayed) {
+        const delaySec = Math.round(delayMs / 1000);
+        console.log(`[OFFLINE] 📡 Gecikmeli mesaj tespit edildi: ${delaySec}s gecikme (user: ${ctx.from.id})`);
+    }
+
+    return { messageDate, delayMs, isDelayed };
+}
 
 /**
  * Fotoğraf mesajı handler'ı
@@ -51,16 +80,47 @@ export async function handlePhoto(ctx) {
         const bestPhoto = photos[photos.length - 1];
         const fileId = bestPhoto.file_id;
 
-        // Açık session var mı?
-        const activeSession = getActiveSession(from.id);
+        // ---- Gecikme ölçümü ----
+        const { messageDate, delayMs, isDelayed } = measureDelay(ctx);
+        const lang = getLang(ctx);
+
+        // ---- 1. Açık session var mı? ----
+        // Gecikmeli mesajlarda mesajın gönderildiği zamana göre timeout kontrol et
+        const activeSession = await getActiveSession(from.id, isDelayed ? messageDate : null);
 
         if (activeSession) {
-            // ---- Açık session'a fotoğraf ekle ----
-            await addPhotoToSession(ctx, activeSession, fileId, user, getLang(ctx));
-        } else {
-            // ---- OCR ile plaka oku ve yeni session aç ----
-            await processNewPlatePhoto(ctx, fileId, user, getLang(ctx));
+            // Açık session bulundu — fotoğrafı ekle
+            await addPhotoToSession(ctx, activeSession, fileId, user, lang, isDelayed);
+            return;
         }
+
+        // ---- 2. Gecikmeli mesaj + açık session yok → kapatılmış session'ı ara ----
+        if (isDelayed) {
+            const closedSession = await getRecentClosedSession(from.id, messageDate);
+
+            if (closedSession) {
+                // Kapatılmış session bulundu — yeniden aç ve fotoğrafı ekle
+                const reopened = await reopenClosedSession(closedSession.sessionId, from.id);
+
+                if (reopened) {
+                    const delaySec = Math.round(delayMs / 1000);
+                    await addPhotoToSession(ctx, reopened, fileId, user, lang, true);
+
+                    // Kullanıcıya offline recovery bildirimi
+                    await ctx.reply(
+                        t(lang, 'offline', 'recoveryNotice', reopened.plateNumber, delaySec),
+                        { parse_mode: 'Markdown' }
+                    );
+                    return;
+                }
+            }
+
+            // Kapatılmış session da bulunamadı — normal OCR akışına düş
+            console.log(`[OFFLINE] ⚠️ Gecikmeli mesaj için uygun session bulunamadı (user: ${from.id})`);
+        }
+
+        // ---- 3. Normal akış — OCR ile plaka oku ----
+        await processNewPlatePhoto(ctx, fileId, user, lang);
     } catch (err) {
         console.error('[PHOTO] Hata:', err.message);
         await ctx.reply(t(getLang(ctx), 'photo', 'errorProcessPhoto'));
@@ -69,8 +129,9 @@ export async function handlePhoto(ctx) {
 
 /**
  * Açık session'a fotoğraf ekle
+ * @param {boolean} [isDelayed=false] - Gecikmeli mesaj mı?
  */
-async function addPhotoToSession(ctx, session, fileId, user, lang) {
+async function addPhotoToSession(ctx, session, fileId, user, lang, isDelayed = false) {
     // Fotoğrafı Supabase Storage'a yükle
     let storagePath = `pending/${fileId}`;
     let publicUrl = `pending/${fileId}`;
@@ -86,7 +147,6 @@ async function addPhotoToSession(ctx, session, fileId, user, lang) {
         publicUrl = uploadResult.publicUrl;
     } catch (err) {
         console.error(`[PHOTO] Upload hatası (session'a ekleme): ${err.message}`);
-        // Upload başarısız olsa da telegram_file_id ile devam et
     }
 
     // Fotoğrafı DB'ye kaydet
@@ -98,9 +158,9 @@ async function addPhotoToSession(ctx, session, fileId, user, lang) {
         telegramFileId: fileId,
     });
 
-    // Sayacı artır ve timeout'u sıfırla
-    incrementPhotoCount(ctx.from.id);
-    resetSessionTimeout(ctx.from.id, createTimeoutCallback(ctx, lang));
+    // Sayacı artır ve timeout'u sıfırla (DB'de güncellenir)
+    await incrementPhotoCount(ctx.from.id);
+    await resetSessionTimeout(ctx.from.id, createTimeoutCallback(ctx, lang));
 
     const count = session.photoCount + 1;
 
@@ -109,7 +169,8 @@ async function addPhotoToSession(ctx, session, fileId, user, lang) {
         { parse_mode: 'Markdown' }
     );
 
-    console.log(`[PHOTO] +1 → ${session.plateNumber} (toplam: ${count})`);
+    const delayTag = isDelayed ? ' [OFFLINE]' : '';
+    console.log(`[PHOTO] +1 → ${session.plateNumber} (toplam: ${count})${delayTag}`);
 }
 
 /**
@@ -134,22 +195,15 @@ async function processNewPlatePhoto(ctx, fileId, user, lang) {
             await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
         } catch { /* ignore */ }
 
-        // Fotoğrafı pending'e kaydet (session açılınca eklenecek)
-        // Buffer'ı saklıyoruz ki tekrar indirmek zorunda kalmayalım
-        pendingManualInput.set(ctx.from.id, {
-            fileId,
-            buffer,
-            timestamp: Date.now(),
-            ocrResult: result,
-        });
-
         if (result.plate) {
             // ---- OCR bir şey buldu — Butonlu doğrulama sor ----
+            pendingFileIds.set(ctx.from.id, fileId);
+
             const keyboard = new InlineKeyboard()
                 .text(t(lang, 'photo', 'btnApprove', result.plate), `plate_ok:${result.plate}`)
                 .row()
-                .switchInlineCurrent(t(lang, 'photo', 'btnEdit'), result.plate)
-                .text(t(lang, 'photo', 'btnCancel'), `plate_manual`);
+                .text(t(lang, 'photo', 'btnEdit'), `plate_edit:${result.plate}`)
+                .text(t(lang, 'photo', 'btnCancel'), `plate_cancel`);
 
             await ctx.reply(
                 t(lang, 'photo', 'ocrResult', result.plate, Math.round(result.confidence * 100)),
@@ -159,15 +213,14 @@ async function processNewPlatePhoto(ctx, fileId, user, lang) {
                 }
             );
         } else {
-            // ---- OCR başarısız — manuel giriş iste ----
-            await ctx.reply(
-                t(lang, 'photo', 'ocrFailed'),
-                { parse_mode: 'Markdown' }
-            );
+            // ---- OCR başarısız — doğrudan conversation başlat ----
+            await ctx.conversation.enter('editPlate', {
+                fileId,
+                suggestedPlate: null,
+            });
         }
     } catch (err) {
         console.error('[PHOTO] OCR hatası:', err.message);
-        // Status mesajını güncelle
         try {
             await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
         } catch { /* ignore */ }
@@ -177,101 +230,10 @@ async function processNewPlatePhoto(ctx, fileId, user, lang) {
             { parse_mode: 'Markdown' }
         );
 
-        pendingManualInput.set(ctx.from.id, {
+        await ctx.conversation.enter('editPlate', {
             fileId,
-            buffer: null, // OCR hatası — buffer yok, tekrar indirilecek
-            timestamp: Date.now(),
+            suggestedPlate: null,
         });
-    }
-}
-
-/**
- * Manuel plaka girişi handler'ı (text mesaj olarak)
- * @param {import('grammy').Context} ctx
- * @returns {boolean} İşlendi mi?
- */
-export async function handleManualPlateInput(ctx) {
-    const from = ctx.from;
-    const lang = getLang(ctx);
-    if (!from) return false;
-
-    const pending = pendingManualInput.get(from.id);
-    if (!pending) return false;
-
-    // 10 dakikadan eski bekleme varsa temizle
-    if (Date.now() - pending.timestamp > 600000) {
-        pendingManualInput.delete(from.id);
-        return false;
-    }
-
-    const text = ctx.message?.text?.trim();
-    if (!text || text.startsWith('/')) return false;
-
-    // Minimum uzunluk kontrolü
-    if (text.length < 4) {
-        await ctx.reply(t(lang, 'photo', 'plateShort'));
-        return true;
-    }
-
-    try {
-        // Kullanıcıyı getir
-        let user = await getUserByTelegramId(from.id);
-        if (!user) return false;
-
-        // Normalize et
-        const normalizedPlate = normalizePlate(text);
-
-        // Session aç
-        const session = await openSession({
-            telegramId: from.id,
-            userId: user.id,
-            plateNumber: normalizedPlate,
-            plateRaw: text,
-            confidence: 0, // Manuel giriş
-            onTimeout: createTimeoutCallback(ctx, lang),
-        });
-
-        // Bekleyen fotoğrafı Supabase Storage'a yükle ve kaydet
-        let storagePath = `pending/${pending.fileId}`;
-        let publicUrl = `pending/${pending.fileId}`;
-
-        try {
-            const uploadResult = await uploadPhotoFromTelegram({
-                fileId: pending.fileId,
-                botToken: process.env.TELEGRAM_BOT_TOKEN,
-                plateNumber: normalizedPlate,
-                photoType: 'plate',
-                buffer: pending.buffer || undefined,
-            });
-            storagePath = uploadResult.storagePath;
-            publicUrl = uploadResult.publicUrl;
-        } catch (err) {
-            console.error(`[PHOTO] Upload hatası (manuel): ${err.message}`);
-        }
-
-        await addPhoto({
-            sessionId: session.sessionId,
-            storagePath,
-            publicUrl,
-            photoType: 'plate',
-            telegramFileId: pending.fileId,
-        });
-        incrementPhotoCount(from.id);
-
-        // Pending'i temizle
-        pendingManualInput.delete(from.id);
-
-        await ctx.reply(
-            t(lang, 'photo', 'plateSaved', normalizedPlate, getTimeoutDuration(lang)),
-            { parse_mode: 'Markdown' }
-        );
-
-        console.log(`[PHOTO] Manuel plaka: ${normalizedPlate} (user: ${from.id})`);
-        return true;
-    } catch (err) {
-        console.error('[PHOTO] Manuel giriş hatası:', err.message);
-        await ctx.reply(t(lang, 'photo', 'errorSavePlate'));
-        return true;
     }
 }
 
@@ -284,11 +246,12 @@ export async function handleCallbackQuery(ctx) {
     const from = ctx.from;
     const lang = getLang(ctx);
 
+    // ---- ✅ Onaylıyorum butonu ----
     if (data.startsWith('plate_ok:')) {
-        const plate = data.split(':')[1];
-        const pending = pendingManualInput.get(from.id);
+        const plate = data.slice('plate_ok:'.length);
+        const fileId = pendingFileIds.get(from.id);
 
-        if (!pending) {
+        if (!fileId) {
             await ctx.answerCallbackQuery({ text: t(lang, 'photo', 'cbTimeout'), show_alert: true });
             return;
         }
@@ -308,21 +271,20 @@ export async function handleCallbackQuery(ctx) {
                 userId: user.id,
                 plateNumber: normalizedPlate,
                 plateRaw: plate,
-                confidence: pending.ocrResult?.confidence || 0.8,
+                confidence: 0.8,
                 onTimeout: createTimeoutCallback(ctx, lang),
             });
 
             // Fotoğrafı Supabase Storage'a yükle ve kaydet
-            let storagePath = `pending/${pending.fileId}`;
-            let publicUrl = `pending/${pending.fileId}`;
+            let storagePath = `pending/${fileId}`;
+            let publicUrl = `pending/${fileId}`;
 
             try {
                 const uploadResult = await uploadPhotoFromTelegram({
-                    fileId: pending.fileId,
+                    fileId,
                     botToken: process.env.TELEGRAM_BOT_TOKEN,
                     plateNumber: normalizedPlate,
                     photoType: 'plate',
-                    buffer: pending.buffer || undefined,
                 });
                 storagePath = uploadResult.storagePath;
                 publicUrl = uploadResult.publicUrl;
@@ -335,11 +297,12 @@ export async function handleCallbackQuery(ctx) {
                 storagePath,
                 publicUrl,
                 photoType: 'plate',
-                telegramFileId: pending.fileId,
+                telegramFileId: fileId,
             });
-            incrementPhotoCount(from.id);
+            await incrementPhotoCount(from.id);
 
-            pendingManualInput.delete(from.id);
+            // Geçici Map'ten temizle
+            pendingFileIds.delete(from.id);
 
             await ctx.reply(
                 t(lang, 'photo', 'sessionStarted', normalizedPlate),
@@ -350,14 +313,42 @@ export async function handleCallbackQuery(ctx) {
             await ctx.answerCallbackQuery({ text: t(lang, 'photo', 'cbError'), show_alert: true });
         }
     }
-    else if (data === 'plate_manual') {
-        const pending = pendingManualInput.get(from.id);
-        if (!pending) {
-            await ctx.answerCallbackQuery(t(lang, 'photo', 'cbTimeout'));
+    // ---- ❌ Yanlış, Düzenle butonu → Conversation başlat ----
+    else if (data.startsWith('plate_edit:')) {
+        const suggestedPlate = data.slice('plate_edit:'.length);
+        const fileId = pendingFileIds.get(from.id);
+
+        if (!fileId) {
+            await ctx.answerCallbackQuery({ text: t(lang, 'photo', 'cbTimeout'), show_alert: true });
             return;
         }
+
+        try {
+            await ctx.answerCallbackQuery();
+
+            // Butonları kaldır
+            await ctx.editMessageText(
+                t(lang, 'photo', 'cbManualPrompt'),
+                { parse_mode: 'Markdown' }
+            );
+
+            // Geçici Map'ten temizle
+            pendingFileIds.delete(from.id);
+
+            // Conversation başlat
+            await ctx.conversation.enter('editPlate', {
+                fileId,
+                suggestedPlate,
+            });
+        } catch (err) {
+            console.error('[CB] Düzenleme conversation hatası:', err.message);
+            await ctx.answerCallbackQuery({ text: t(lang, 'photo', 'cbError'), show_alert: true });
+        }
+    }
+    // ---- İptal butonu ----
+    else if (data === 'plate_cancel') {
         await ctx.answerCallbackQuery();
-        await ctx.editMessageText(t(lang, 'photo', 'cbManualPrompt'));
+        await ctx.editMessageText(t(lang, 'conversation', 'cancelled'));
     }
 }
 

@@ -24,7 +24,7 @@ export const translations = {
             errorPhotoFail: '❌ Fotoğraf işlenirken hata oluştu.\n\n✏️ Plaka numarasını elle yazabilirsin (örn: `34 ABC 1234`)',
             btnApprove: (plate) => `✅ Onayla: ${plate}`,
             btnEdit: '✏️ Düzenle',
-            btnCancel: '❌ İptal / Kendim Yazacağım',
+            btnCancel: '❌ İptal',
             plateShort: '⚠️ Plaka çok kısa. Lütfen tam plaka numarasını yaz.',
             plateSaved: (plate, timeout) => `✅ *Plaka kaydedildi!*\n\n🚛 Plaka: \`${plate}\`\n✏️ Manuel giriş\n\n📸 Şimdi konteyner ve mühür fotoğraflarını gönderebilirsin.\n⏰ ${timeout} içinde otomatik kapanır veya /done ile bitir.`,
             errorSavePlate: '❌ Plaka kaydedilirken hata oluştu. Tekrar dene.',
@@ -47,6 +47,17 @@ export const translations = {
             emptyQuery: 'Lütfen bir plaka yazın.',
             errorOccurred: '⚠️ Bir hata oluştu. Lütfen tekrar dene.',
             restartTimeoutMsg: (plate, count) => `⏰ *Oturum otomatik kapandı*\n\n🚛 Plaka: \`${plate}\`\n📸 Fotoğraf: ${count} adet`
+        },
+        conversation: {
+            editPrompt: '✏️ *Plaka Düzenleme*\n\nDoğru plaka numarasını aşağıya yazın.\nÖrnek: `34 ABC 1234`\n\n💡 İptal etmek için /iptal yazın.',
+            editPromptWithSuggestion: (plate) => `✏️ *Plaka Düzenleme*\n\nOCR önerisi: \`${plate}\`\nDoğru plaka numarasını aşağıya yazın.\nÖrnek: \`34 ABC 1234\`\n\n💡 İptal etmek için /iptal yazın.`,
+            expectText: '⚠️ Lütfen plaka numarasını *metin* olarak yazın.',
+            cancelled: '🚫 Plaka girişi iptal edildi.',
+            cancelledByCommand: '🚫 Komut algılandı — plaka girişi iptal edildi.',
+            tooManyAttempts: '❌ Çok fazla hatalı deneme. Lütfen tekrar fotoğraf gönderin.',
+        },
+        offline: {
+            recoveryNotice: (plate, delaySec) => `📡 *Çevrimdışı Kurtarma*\n\n🔄 Geç ulaşan fotoğrafınız *${delaySec}s* gecikme ile \`${plate}\` oturumuna eklendi.\n📸 Göndermeye devam edebilirsiniz.`,
         },
         errors: {
             noUser: '❌ Kullanıcı bilgisi alınamadı.',
@@ -80,7 +91,7 @@ export const translations = {
             errorPhotoFail: '❌ Error processing photo.\n\n✏️ You can type the plate manually (e.g., \`34 ABC 1234\`)',
             btnApprove: (plate) => `✅ Approve: ${plate}`,
             btnEdit: '✏️ Edit',
-            btnCancel: '❌ Cancel / I will type it',
+            btnCancel: '❌ Cancel',
             plateShort: '⚠️ Plate is too short. Please write the full plate number.',
             plateSaved: (plate, timeout) => `✅ *Plate saved!*\n\n🚛 Plate: \`${plate}\`\n✏️ Manual entry\n\n📸 You can now send container and seal photos.\n⏰ Auto-closes in ${timeout} or finish with /done.`,
             errorSavePlate: '❌ Error saving plate. Try again.',
@@ -103,6 +114,17 @@ export const translations = {
             emptyQuery: 'Please write a plate.',
             errorOccurred: '⚠️ An error occurred. Please try again.',
             restartTimeoutMsg: (plate, count) => `⏰ *Session auto-closed*\n\n🚛 Plate: \`${plate}\`\n📸 Photos: ${count}`
+        },
+        conversation: {
+            editPrompt: '✏️ *Edit Plate*\n\nType the correct plate number below.\nExample: `34 ABC 1234`\n\n💡 Type /cancel to abort.',
+            editPromptWithSuggestion: (plate) => `✏️ *Edit Plate*\n\nOCR suggestion: \`${plate}\`\nType the correct plate number below.\nExample: \`34 ABC 1234\`\n\n💡 Type /cancel to abort.`,
+            expectText: '⚠️ Please type the plate number as *text*.',
+            cancelled: '🚫 Plate entry cancelled.',
+            cancelledByCommand: '🚫 Command detected — plate entry cancelled.',
+            tooManyAttempts: '❌ Too many invalid attempts. Please send a photo again.',
+        },
+        offline: {
+            recoveryNotice: (plate, delaySec) => `📡 *Offline Recovery*\n\n🔄 Your delayed photo (*${delaySec}s* late) was added to the \`${plate}\` session.\n📸 You can continue sending photos.`,
         },
         errors: {
             noUser: '❌ Could not retrieve user info.',

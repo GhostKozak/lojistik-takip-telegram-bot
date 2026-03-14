@@ -1,16 +1,20 @@
 /**
  * Lojistik Fotoğraf Yönetim Botu — Ana Giriş Noktası
  * Telegram bot instance, middleware zinciri ve komut kayıtları
+ * 
+ * grammY conversations plugin ile çok adımlı plaka düzenleme desteği.
  */
 
 import 'dotenv/config';
 import { Bot, GrammyError, HttpError } from 'grammy';
+import { conversations, createConversation } from '@grammyjs/conversations';
 import { handleStart } from './handlers/start.js';
 import { handleHelp } from './handlers/help.js';
 import { handleDone } from './handlers/done.js';
 import { handleStatus } from './handlers/status.js';
-import { handlePhoto, handleManualPlateInput, handleCallbackQuery } from './handlers/photo.js';
-import { recoverOpenSessions } from './session.js';
+import { handlePhoto, handleCallbackQuery } from './handlers/photo.js';
+import { editPlate } from './conversations/editPlate.js';
+import { recoverOpenSessions, stopSessionSweep } from './session.js';
 import { getLang, t } from './i18n.js';
 
 // =============================================
@@ -59,6 +63,14 @@ bot.use(async (ctx, next) => {
 });
 
 // =============================================
+// grammY Conversations Plugin
+// conversations() middleware'i KOMUTLARDAN ÖNCE olmalı
+// çünkü aktif conversation varsa mesajları yakalaması gerekir
+// =============================================
+bot.use(conversations());
+bot.use(createConversation(editPlate));
+
+// =============================================
 // Komutlar
 // =============================================
 bot.command('start', handleStart);
@@ -75,7 +87,10 @@ bot.command('status', handleStatus); // İngilizce alias
 bot.on('message:photo', handlePhoto);
 
 // =============================================
-// Metin Mesajları (Manuel plaka girişi + bilinmeyen)
+// Metin Mesajları (bilinmeyen)
+// NOT: Conversation aktifken metin mesajları conversation tarafından
+// yakalanır, bu handler'a düşmez. Bu sadece conversation dışındaki
+// bilinmeyen metinler içindir.
 // =============================================
 bot.on('message:text', async (ctx) => {
     const lang = getLang(ctx);
@@ -85,10 +100,6 @@ bot.on('message:text', async (ctx) => {
         await ctx.reply(t(lang, 'index', 'unknownCommand'));
         return;
     }
-
-    // Manuel plaka girişi bekliyor muyuz?
-    const handled = await handleManualPlateInput(ctx);
-    if (handled) return;
 
     // Bilinmeyen metin
     await ctx.reply(t(lang, 'index', 'unknownText'));
@@ -166,6 +177,7 @@ async function startBot() {
         console.log(`║  📛 İsim: ${me.first_name.padEnd(37)}║`);
         console.log(`║  🆔 ID: ${String(me.id).padEnd(39)}║`);
         console.log('║  📡 Mod: Long Polling                            ║');
+        console.log('║  🔌 Plugin: conversations v2                     ║');
         console.log('╚══════════════════════════════════════════════════╝');
         console.log();
 
@@ -202,12 +214,14 @@ async function startBot() {
 // Graceful shutdown
 process.on('SIGINT', () => {
     console.log('\n👋 Bot kapatılıyor...');
+    stopSessionSweep();
     bot.stop();
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
     console.log('\n👋 Bot kapatılıyor...');
+    stopSessionSweep();
     bot.stop();
     process.exit(0);
 });
