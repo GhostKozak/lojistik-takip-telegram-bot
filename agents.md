@@ -32,12 +32,12 @@ Lütfen:
 
 ## 2. 🤖 Telegram Bot Geliştiricisi (Bot Engineer)
 
-**Rol:** grammY framework ile bot geliştirme, session/state yönetimi, Tesseract.js entegrasyonu.
+**Rol:** grammY framework ile bot geliştirme, session/state yönetimi, PlateRecognizer.com entegrasyonu (ve gelecekteki olası Python OCR geçişleri).
 
 **Uzmanlık Alanları:**
 - grammY Bot API, Middleware, ConversationPlugin
 - Node.js async/await patterns, Event Loop optimizasyonu
-- Tesseract.js OCR konfigürasyonu ve doğruluk iyileştirme
+- PlateRecognizer.com konfigürasyonu ve gelecekteki kullanımlar için Python OCR (YOLOv8/EasyOCR) altyapısı
 - Error handling ve graceful shutdown
 
 **Komut Şablonu:**
@@ -115,7 +115,7 @@ Hata durumlarını ele al ve retry mekanizması ekle.
 
 **Uzmanlık Alanları:**
 - Node.js built-in test runner (`node --test`)
-- Mock/Stub stratejileri (Tesseract, Supabase client)
+- Mock/Stub stratejileri (OCR servisleri, Supabase client)
 - Playwright ile E2E web panel testi
 
 **Komut Şablonu:**

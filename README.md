@@ -7,8 +7,10 @@ Saha çalışanlarının araç plakası, konteyner ve mühür fotoğraflarını 
 ```
 Telegram Bot (Node.js + grammY)  →  Supabase (PostgreSQL + Storage)  ←  Next.js Web Panel
         ↓                                                                      ↓
-   Tesseract.js OCR                                                    Fuzzy Search (pg_trgm)
+   PlateRecognizer.com                                                Fuzzy Search (pg_trgm)
 ```
+
+> **Not:** Projede ayrıca gelecekte yerel çalışmaya geçiş potansiyeli için bir `Python OCR (YOLOv8 + EasyOCR)` betiği de bulunmaktadır, ancak şu aşamada aktif olarak bulut tabanlı API (PlateRecognizer) kullanılmaktadır.
 
 ## 📁 Proje Yapısı
 
@@ -77,7 +79,7 @@ Tarayıcıda `http://localhost:3000` adresine gidin.
 
 | Katman  | Teknoloji                        |
 | ------- | -------------------------------- |
-| Bot     | Node.js 20, grammY, Tesseract.js |
+| Bot     | Node.js 20, grammY, PlateRecognizer.com (Gelecek için YOLOv8 ve EasyOCR kodları dahil) |
 | Web     | Next.js 14, React 18             |
 | DB      | PostgreSQL 16 (Supabase)         |
 | Storage | Supabase Storage                 |

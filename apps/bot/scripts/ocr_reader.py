@@ -1,4 +1,7 @@
 """
+⚠️ NOT: Bu dosya şu an aktif olarak kullanılmamaktadır. Sistem şu an API tabanlı (PlateRecognizer.com) çalışmaktadır. 
+İleride buluttan yerel OCR işlemine (Local + YOLOv8 + EasyOCR) geçiş yapılması planları dahilinde referans olması amacıyla tutulmaktadır.
+
 YOLOv8 + EasyOCR Plaka Okuma Script'i — Gelişmiş Tespit ve Birleştirme v5
 
 - YOLO ile plaka bölgesi kesilip OCR'a gönderilir (Dahili Kırpma).

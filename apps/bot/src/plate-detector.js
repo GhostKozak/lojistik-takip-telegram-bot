@@ -1,4 +1,8 @@
 /**
+ * ⚠️ NOT: Bu modül şu an aktif olarak kullanılmamaktadır (Sistem PlateRecognizer.com API'si üzerinden çalışmaktadır).
+ * İleride Tesseract veya farklı bir yerel OCR motoruna geçiş yapılması durumunda ön-işleme ve bölge kırpma 
+ * stratejileri için referans olarak tutulmaktadır.
+ * 
  * Plaka Dedektörü — Görüntü ön-işleme + bölge bazlı tarama
  * 
  * Strateji:
