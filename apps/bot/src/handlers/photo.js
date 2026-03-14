@@ -80,9 +80,16 @@ export async function handlePhoto(ctx) {
         const bestPhoto = photos[photos.length - 1];
         const fileId = bestPhoto.file_id;
 
+        const lang = getLang(ctx);
+
+        // YETKİ KONTROLÜ
+        if (!user.is_authorized && process.env.NODE_ENV !== 'test') {
+            await ctx.reply(t(lang, 'errors', 'unauthorized') || '⛔ Bu botu kullanma yetkiniz bulunmamaktadır. Lütfen yöneticinizle iletişime geçin.');
+            return;
+        }
+
         // ---- Gecikme ölçümü ----
         const { messageDate, delayMs, isDelayed } = measureDelay(ctx);
-        const lang = getLang(ctx);
 
         // ---- 1. Açık session var mı? ----
         // Gecikmeli mesajlarda mesajın gönderildiği zamana göre timeout kontrol et

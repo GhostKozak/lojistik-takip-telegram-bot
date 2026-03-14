@@ -1,7 +1,15 @@
 version: '3.8'
 
+# Added a global extension for DRY logging config
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   web:
+    image: lojistik_web:latest
     build:
       context: ./apps/web
       dockerfile: Dockerfile
@@ -14,25 +22,51 @@ services:
       - "3000:3000"
     env_file:
       - .env
-    restart: unless-stopped
+    restart: on-failure:5
     networks:
       - lojistik_net
     depends_on:
-      - bot
+      bot:
+        condition: service_healthy
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.10'
+          memory: 128M
 
   bot:
+    image: lojistik_bot:latest
     build:
       context: ./apps/bot
       dockerfile: Dockerfile
     container_name: lojistik_bot
     env_file:
       - .env
-    restart: unless-stopped
+    restart: on-failure:5
     networks:
       - lojistik_net
-    # Botun tmp klasörünü volume olarak bağlamak faydalı olabilir, örneğin indirilen resimler için:
     volumes:
       - ./tmp:/app/tmp
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.10'
+          memory: 128M
+    # NOTE: You'll need to define a simple healthcheck script in your bot
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
 networks:
   lojistik_net:

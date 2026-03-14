@@ -12,6 +12,8 @@
 import sharp from 'sharp';
 import { supabase } from './db.js';
 
+sharp.cache(false); // Bellekte resimlerin tutulmasını engelleyerek OOM hatalarını önler.
+
 const STORAGE_BUCKET = process.env.STORAGE_BUCKET || 'vehicle-photos';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_WIDTH = 1920;

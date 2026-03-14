@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import JSZip from 'jszip';
 import { supabase } from '@/lib/supabase';
+import { updateSessionNotes } from './actions';
 import styles from './VehicleDetail.module.css';
 
 export default function VehicleDetail({ session: initialSession, photos: initialPhotos }) {
@@ -37,21 +38,21 @@ export default function VehicleDetail({ session: initialSession, photos: initial
         if (e.key === 'ArrowRight') nextPhoto();
     }, [photos.length]);
 
-    // Save Notes (Debounced)
+    // Save Notes (Debounced & Secure)
     useEffect(() => {
         if (notes === (session.notes || '')) return;
 
         const timer = setTimeout(async () => {
             setIsSaving(true);
             try {
-                const { error } = await supabase
-                    .from('vehicle_sessions')
-                    .update({ notes: notes.trim() })
-                    .eq('id', session.id);
-
-                if (error) throw error;
+                // RLS / IDOR korumalı server action çağrısı
+                const res = await updateSessionNotes(session.id, notes.trim());
+                if (res?.error) {
+                    throw new Error(res.error);
+                }
             } catch (err) {
                 console.error('Not kaydetme hatası:', err);
+                alert("Uyarı: Notlar kaydedilemedi, oturum sonlanmış veya yetkiniz kalmamış olabilir!");
             } finally {
                 setIsSaving(false);
             }
@@ -90,7 +91,7 @@ export default function VehicleDetail({ session: initialSession, photos: initial
         };
     }, [session.id, session.status]);
 
-    // Bulk Download
+    // Bulk Download (Batched to prevent OOM)
     const downloadAll = async () => {
         if (photos.length === 0 || downloading) return;
         setDownloading(true);
@@ -98,26 +99,36 @@ export default function VehicleDetail({ session: initialSession, photos: initial
         try {
             const zip = new JSZip();
             const folder = zip.folder(`Lojistik_${session.plate_number.replace(/\s+/g, '_')}`);
+            
+            // Tarayıcının çökmesini önlemek için Promise'ları batchler halinde yürüt.
+            const concurrencyLimit = 5; 
+            
+            for (let i = 0; i < photos.length; i += concurrencyLimit) {
+                const batch = photos.slice(i, i + concurrencyLimit);
+                
+                const fetchPromises = batch.map(async (photo, index) => {
+                    if (photo.public_url.startsWith('pending/')) return;
 
-            // Tüm fotoğrafları indir
-            const downloadPromises = photos.map(async (photo, index) => {
-                if (photo.public_url.startsWith('pending/')) return;
+                    try {
+                        const response = await fetch(photo.public_url);
+                        if (!response.ok) throw new Error('Yüklenemedi');
+                        
+                        const blob = await response.blob();
 
-                try {
-                    const response = await fetch(photo.public_url);
-                    const blob = await response.blob();
+                        // Dosya ismini oluştur (global index + tarih)
+                        const globalIndex = i + index;
+                        const date = new Date(photo.uploaded_at).toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                        const fileName = `${globalIndex + 1}_${date}.jpg`;
 
-                    // Dosya ismini oluştur (index + tarih)
-                    const date = new Date(photo.uploaded_at).toISOString().replace(/[:.]/g, '-').slice(0, 19);
-                    const fileName = `${index + 1}_${date}.jpg`;
-
-                    folder.file(fileName, blob);
-                } catch (err) {
-                    console.error('Fotoğraf indirme hatası:', err);
-                }
-            });
-
-            await Promise.all(downloadPromises);
+                        folder.file(fileName, blob);
+                    } catch (err) {
+                        console.error('Fotoğraf indirme hatası:', err);
+                    }
+                });
+                
+                // Seçili batchin tamamen bitmesini bekle
+                await Promise.all(fetchPromises);
+            }
 
             const content = await zip.generateAsync({ type: 'blob' });
 

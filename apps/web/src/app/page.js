@@ -7,26 +7,22 @@ export default async function HomePage() {
   let recentSessions = [];
 
   try {
-    // Total sessions
-    const { count: totalSessions } = await supabase
-      .from('vehicle_sessions')
-      .select('*', { count: 'exact', head: true });
-
-    // Open sessions
-    const { count: openSessions } = await supabase
-      .from('vehicle_sessions')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'open');
-
-    // Total photos
-    const { count: totalPhotos } = await supabase
-      .from('photos')
-      .select('*', { count: 'exact', head: true });
-
-    // Total users
-    const { count: totalUsers } = await supabase
-      .from('field_users')
-      .select('*', { count: 'exact', head: true });
+    const [
+      { count: totalSessions },
+      { count: openSessions },
+      { count: totalPhotos },
+      { count: totalUsers },
+      { data }
+    ] = await Promise.all([
+      supabase.from('vehicle_sessions').select('*', { count: 'exact', head: true }),
+      supabase.from('vehicle_sessions').select('*', { count: 'exact', head: true }).eq('status', 'open'),
+      supabase.from('photos').select('*', { count: 'exact', head: true }),
+      supabase.from('field_users').select('*', { count: 'exact', head: true }),
+      supabase.from('vehicle_sessions')
+        .select('*, field_users(full_name, username), photos(count)')
+        .order('opened_at', { ascending: false })
+        .limit(12)
+    ]);
 
     stats = {
       totalSessions: totalSessions ?? 0,
@@ -34,13 +30,6 @@ export default async function HomePage() {
       totalPhotos: totalPhotos ?? 0,
       totalUsers: totalUsers ?? 0,
     };
-
-    // Recent sessions with user info and photo count
-    const { data } = await supabase
-      .from('vehicle_sessions')
-      .select('*, field_users(full_name, username), photos(count)')
-      .order('opened_at', { ascending: false })
-      .limit(12);
 
     recentSessions = data ?? [];
   } catch (err) {

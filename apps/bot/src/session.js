@@ -483,10 +483,23 @@ async function sweepExpiredSessionsFallback(globalOnTimeout) {
 
     console.log(`[SWEEP-FALLBACK] ⏰ ${expired.length} expired session bulundu`);
 
-    for (const session of expired) {
-        // Tek tek kapat
-        await closeSessionById(session.id);
+    const ids = expired.map(s => s.id);
+    
+    // Toplu kapatma (N+1 Query sorununu önler)
+    const { error: updateError } = await supabase
+        .from('vehicle_sessions')
+        .update({
+            status: 'closed',
+            closed_at: new Date().toISOString(),
+        })
+        .in('id', ids)
+        .eq('status', 'open');
+        
+    if (updateError) {
+        console.error(`[SWEEP-FALLBACK] Toplu güncelleme hatası: ${updateError.message}`);
+    }
 
+    for (const session of expired) {
         const telegramId = session.telegram_id;
         if (!telegramId) continue;
 

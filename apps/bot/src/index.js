@@ -203,6 +203,9 @@ async function startBot() {
             const app = express();
             app.use(express.json());
             
+            // Docker healthcheck için endpoint
+            app.get('/health', (req, res) => res.status(200).send('OK'));
+
             // Güvenlik için token'ı path içine ekle
             const webhookPath = `/webhook-${BOT_TOKEN}`;
             app.use(webhookPath, webhookCallback(bot, 'express'));
@@ -224,6 +227,14 @@ async function startBot() {
             });
         } else {
             // POLLING MODU
+            // Polling modunda da docker healthcheck için ufacık bir sunucu açıyoruz
+            const app = express();
+            app.get('/health', (req, res) => res.status(200).send('OK'));
+            const PORT = process.env.PORT || 3000;
+            server = app.listen(PORT, () => {
+                console.log(`🩺 Health check server port ${PORT} üzerinden dinleniyor.`);
+            });
+
             await bot.api.deleteWebhook(); // Eski webhook varsa kaldır
             console.log('⏳ Mesaj bekleniyor... (Ctrl+C ile durdur)');
             console.log();
@@ -256,6 +267,7 @@ async function shutdown() {
         if (isProd) {
             if (server) server.close(() => console.log('HTTP Sunucusu kapatıldı.'));
         } else {
+            if (server) server.close(() => console.log('Healthcheck Sunucusu kapatıldı.'));
             await bot.stop();
         }
     } catch (e) {
