@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: lojistik_web
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - lojistik_net
+    depends_on:
+      - bot
+
+  bot:
+    build:
+      context: ./apps/bot
+      dockerfile: Dockerfile
+    container_name: lojistik_bot
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - lojistik_net
+    # Botun tmp klasörünü volume olarak bağlamak faydalı olabilir, örneğin indirilen resimler için:
+    volumes:
+      - ./tmp:/app/tmp
+
+networks:
+  lojistik_net:
+    driver: bridge
