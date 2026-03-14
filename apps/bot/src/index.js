@@ -14,6 +14,7 @@ import { handleHelp } from './handlers/help.js';
 import { handleDone } from './handlers/done.js';
 import { handleStatus } from './handlers/status.js';
 import { handlePhoto, handleCallbackQuery } from './handlers/photo.js';
+import { handleListPending, handleAuthCallback } from './handlers/admin.js';
 import { editPlate } from './conversations/editPlate.js';
 import { recoverOpenSessions, stopSessionSweep } from './session.js';
 import { getLang, t } from './i18n.js';
@@ -45,7 +46,7 @@ const bot = new Bot(BOT_TOKEN);
 bot.use(async (ctx, next) => {
     const start = Date.now();
     const user = ctx.from;
-    const updateType = ctx.updateType;
+    const updateType = Object.keys(ctx.update).filter(k => k !== 'update_id')[0] || 'unknown';
 
     // Gelen güncellemeyi logla
     if (user) {
@@ -81,6 +82,7 @@ bot.command('done', handleDone);
 bot.command('bitti', handleDone); // Türkçe alias
 bot.command('durum', handleStatus);
 bot.command('status', handleStatus); // İngilizce alias
+bot.command('bekleyen', handleListPending);
 
 // =============================================
 // Fotoğraf Handler — OCR + Session akışı
@@ -109,6 +111,12 @@ bot.on('message:text', async (ctx) => {
 // =============================================
 // Buton Tıklamaları (Inline Buttons)
 // =============================================
+bot.on('callback_query:data', async (ctx, next) => {
+    if (ctx.callbackQuery.data.startsWith('auth_user:')) {
+        return handleAuthCallback(ctx);
+    }
+    await next();
+});
 bot.on('callback_query', handleCallbackQuery);
 
 // =============================================
@@ -150,8 +158,9 @@ bot.on('inline_query', async (ctx) => {
 bot.catch((err) => {
     const ctx = err.ctx;
     const e = err.error;
+    const updateType = ctx ? (Object.keys(ctx.update).filter(k => k !== 'update_id')[0] || 'unknown') : 'unknown';
 
-    console.error(`[HATA] ${ctx.updateType} güncellemesi işlenirken hata:`);
+    console.error(`[HATA] ${updateType} güncellemesi işlenirken hata:`);
 
     if (e instanceof GrammyError) {
         console.error(`  Telegram API hatası: ${e.description}`);

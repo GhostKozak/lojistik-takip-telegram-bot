@@ -64,6 +64,39 @@ export async function upsertUser({ telegramId, fullName, username }) {
     return data;
 }
 
+/**
+ * Kullanıcı yetkilendirmesini güncelle
+ * @param {number} telegramId
+ * @param {boolean} isAuthorized
+ * @returns {Promise<object>}
+ */
+export async function setAuthorization(telegramId, isAuthorized) {
+    const { data, error } = await supabase
+        .from('field_users')
+        .update({ is_authorized: isAuthorized })
+        .eq('telegram_id', telegramId)
+        .select()
+        .single();
+
+    if (error) throw new Error(`Yetkilendirme hatası: ${error.message}`);
+    return data;
+}
+
+/**
+ * Yetki bekleyen (authorized olmayan) kullanıcıları listele
+ * @returns {Promise<object[]>}
+ */
+export async function getUnauthorizedUsers() {
+    const { data, error } = await supabase
+        .from('field_users')
+        .select('*')
+        .eq('is_authorized', false)
+        .order('created_at', { ascending: false });
+
+    if (error) throw new Error(`Bekleyen kullanıcı listesi hatası: ${error.message}`);
+    return data;
+}
+
 // =============================================
 // Vehicle Sessions (Araç Oturumları)
 // =============================================

@@ -6,3 +6,8 @@ npm-debug.log
 .gitignore
 README.md
 tmp
+# Unused OCR files
+requirements.txt
+eng.traineddata
+yolov8n.pt
+scripts/ocr_reader.py

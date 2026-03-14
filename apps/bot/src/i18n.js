@@ -63,7 +63,17 @@ export const translations = {
             noUser: '❌ Kullanıcı bilgisi alınamadı.',
             errorStart: '❌ Bir hata oluştu. Lütfen tekrar dene.',
             errorStatus: '❌ Durum bilgisi alınırken hata oluştu.',
-            errorDone: '❌ Oturum kapatılırken hata oluştu.'
+            errorDone: '❌ Oturum kapatılırken hata oluştu.',
+            unauthorized: '⛔ Bu botu kullanma yetkiniz bulunmamaktadır. Lütfen yöneticinizle iletişime geçin.'
+        },
+        admin: {
+            newUserAlert: (name, id) => `🛎 *Yeni Kullanıcı Kaydı*\n\n👤 İsim: ${name}\n🆔 ID: \`${id}\`\n\nBu kullanıcıya yetki vermek istiyor musunuz?`,
+            btnApprove: '✅ Yetki Ver',
+            userAuthorized: (name) => `✅ *${name}* başarıyla yetkilendirildi.`,
+            authNotification: '🎉 Tebrikler! Botu kullanma yetkiniz yönetici tarafından onaylandı. Fotoğraf göndererek başlayabilirsiniz.',
+            noPendingUsers: '📭 Yetki bekleyen kullanıcı bulunamadı.',
+            pendingUsersList: '📋 *Yetki Bekleyen Kullanıcılar:*',
+            errorAuth: '❌ Yetkilendirme sırasında hata oluştu.'
         }
     },
     en: {
@@ -130,7 +140,17 @@ export const translations = {
             noUser: '❌ Could not retrieve user info.',
             errorStart: '❌ An error occurred. Please try again.',
             errorStatus: '❌ Error retrieving status info.',
-            errorDone: '❌ Error closing session.'
+            errorDone: '❌ Error closing session.',
+            unauthorized: '⛔ You are not authorized to use this bot. Please contact your administrator.'
+        },
+        admin: {
+            newUserAlert: (name, id) => `🛎 *New User Registration*\n\n👤 Name: ${name}\n🆔 ID: \`${id}\`\n\nDo you want to authorize this user?`,
+            btnApprove: '✅ Authorize',
+            userAuthorized: (name) => `✅ *${name}* successfully authorized.`,
+            authNotification: '🎉 Congratulations! Your authorization to use the bot has been approved by the administrator. You can start by sending photos.',
+            noPendingUsers: '📭 No pending users found.',
+            pendingUsersList: '📋 *Pending Users:*',
+            errorAuth: '❌ Error during authorization.'
         }
     }
 };

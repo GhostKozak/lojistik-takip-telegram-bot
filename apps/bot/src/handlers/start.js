@@ -5,6 +5,7 @@
 
 import { upsertUser, getUserByTelegramId } from '../db.js';
 import { getLang, t } from '../i18n.js';
+import { notifyAdminNewUser } from './admin.js';
 
 /**
  * /start komut handler'ı
@@ -34,6 +35,10 @@ export async function handleStart(ctx) {
             : t(lang, 'start', 'welcomeBack', from.first_name);
 
         await ctx.reply(welcomeMessage, { parse_mode: 'Markdown' });
+
+        if (isNew) {
+            await notifyAdminNewUser(ctx, user);
+        }
 
         console.log(
             `[START] ${isNew ? 'Yeni kullanıcı' : 'Mevcut kullanıcı'}: ${from.first_name} (${from.id})`

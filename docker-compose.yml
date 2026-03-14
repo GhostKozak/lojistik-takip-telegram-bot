@@ -49,8 +49,6 @@ services:
     restart: on-failure:5
     networks:
       - lojistik_net
-    volumes:
-      - ./tmp:/app/tmp
     logging: *default-logging
     deploy:
       resources:

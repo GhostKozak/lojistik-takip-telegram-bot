@@ -84,7 +84,7 @@ export async function handlePhoto(ctx) {
 
         // YETKİ KONTROLÜ
         if (!user.is_authorized && process.env.NODE_ENV !== 'test') {
-            await ctx.reply(t(lang, 'errors', 'unauthorized') || '⛔ Bu botu kullanma yetkiniz bulunmamaktadır. Lütfen yöneticinizle iletişime geçin.');
+            await ctx.reply(t(lang, 'errors', 'unauthorized'));
             return;
         }
 
